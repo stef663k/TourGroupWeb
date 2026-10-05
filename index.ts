@@ -1,7 +1,62 @@
+const html = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tour Group</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+        color: #f8fafc;
+        text-align: center;
+        padding: 2rem;
+      }
+
+      h1 {
+        font-size: clamp(2.5rem, 8vw, 5rem);
+        font-weight: 700;
+        letter-spacing: 0.05em;
+      }
+
+      p {
+        margin-top: 1rem;
+        font-size: clamp(1.25rem, 4vw, 2rem);
+        color: #93c5fd;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Tour Group</h1>
+    <p>Comming soon</p>
+  </body>
+</html>`;
+
 const server = Bun.serve({
   port: 3000,
   fetch(req) {
-    return new Response("Hello from TourGroupWeb!");
+    const url = new URL(req.url);
+
+    if (url.pathname === "/" || url.pathname === "/index.html") {
+      return new Response(html, {
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      });
+    }
+
+    return new Response("Not Found", { status: 404 });
   },
 });
 
