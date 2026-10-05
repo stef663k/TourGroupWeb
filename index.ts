@@ -4,11 +4,7 @@ const server = Bun.serve({
     const url = new URL(req.url);
 
     if (url.pathname === "/" || url.pathname === "/index.html") {
-      return new Response(Bun.file("public/index.html"));
-    }
-
-    if (url.pathname === "/favicon.ico") {
-      return new Response(null, { status: 204 });
+      return new Response(Bun.file("index.html"));
     }
 
     return new Response("Not Found", { status: 404 });
