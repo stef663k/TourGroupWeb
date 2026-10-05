@@ -41,13 +41,13 @@ const html = `<!DOCTYPE html>
   </head>
   <body>
     <h1>Tour Group</h1>
-    <p>Comming soon</p>
+    <p>Coming soon</p>
   </body>
 </html>`;
 
-const server = Bun.serve({
+export default {
   port: 3000,
-  fetch(req) {
+  fetch(req: Request): Response {
     const url = new URL(req.url);
 
     if (url.pathname === "/" || url.pathname === "/index.html") {
@@ -56,8 +56,10 @@ const server = Bun.serve({
       });
     }
 
+    if (url.pathname === "/favicon.ico") {
+      return new Response(null, { status: 204 });
+    }
+
     return new Response("Not Found", { status: 404 });
   },
-});
-
-console.log(`Server running at http://localhost:${server.port}`);
+};
