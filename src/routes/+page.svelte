@@ -45,14 +45,27 @@
     flex-direction: column;
     align-items: center;
     gap: 0;
+    width: 100%;
+    max-width: 32rem;
+    margin: 0 auto;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
   }
 
   .partners li {
     width: 100%;
-    max-width: 24rem;
-    border-top: 1px solid var(--line);
-    padding: clamp(1rem, 3vw, 1.5rem) 0;
+    padding: clamp(1rem, 3vw, 1.5rem) clamp(0.5rem, 2vw, 1rem);
     font-size: clamp(1rem, 2.5vw, 1.25rem);
     color: var(--fg);
+    letter-spacing: 0.02em;
+    transition: color 0.2s var(--ease);
+  }
+
+  .partners li + li {
+    border-top: 1px solid var(--line);
+  }
+
+  .partners li:hover {
+    color: var(--accent);
   }
 </style>
