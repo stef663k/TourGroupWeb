@@ -1,0 +1,285 @@
+/* ============================================
+   Tour Group — global stylesheet
+   ============================================ */
+
+/* --- Reset ---------------------------------- */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* --- Design tokens -------------------------- */
+:root {
+  /* Farver */
+  --bg:        #0a0a0a;
+  --bg-soft:   #111111;
+  --fg:        #f5f5f5;
+  --fg-muted:  #888888;
+  --line:      #222222;
+  --accent:    #d4ff00;
+
+  /* Typografi */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* Rum (flydende, skalerer med viewport) */
+  --space-section: clamp(3.5rem, 8vw, 8rem);
+  --space-gutter:  clamp(1.25rem, 4vw, 2rem);
+  --max-width:     1200px;
+
+  /* Overgange */
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* --- Grundopsætning ------------------------- */
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+/* --- Typografi ------------------------------ */
+h1, h2, h3, h4 {
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+h1 {
+  font-size: clamp(2.25rem, 9vw, 6rem);
+  font-weight: 700;
+  max-width: 14ch;
+}
+
+h2 {
+  font-size: clamp(1.5rem, 5vw, 3rem);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  max-width: 20ch;
+  margin-bottom: 1.5rem;
+}
+
+h3 {
+  font-size: clamp(1.125rem, 3vw, 1.5rem);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+p {
+  font-size: clamp(1rem, 2.5vw, 1.125rem);
+  color: #cccccc;
+  max-width: 60ch;
+  margin-bottom: 1.25rem;
+}
+
+/* --- Navigation ----------------------------- */
+nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  width: 100%;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: clamp(1rem, 3vw, 1.5rem) var(--space-gutter);
+  border-bottom: 1px solid var(--line);
+}
+
+nav > a {
+  font-size: clamp(1rem, 2.5vw, 1.125rem);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--fg);
+  border-bottom: none;
+}
+
+nav ul {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: clamp(1rem, 3vw, 1.75rem);
+  list-style: none;
+}
+
+nav ul a {
+  font-size: clamp(0.875rem, 2.5vw, 0.9375rem);
+  color: var(--fg-muted);
+  border-bottom: none;
+}
+
+nav ul a:hover {
+  color: var(--accent);
+}
+
+/* --- Main ----------------------------------- */
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* --- Links ---------------------------------- */
+a {
+  color: var(--fg);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent);
+  transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+
+a:hover {
+  color: var(--accent);
+}
+
+/* --- Layout --------------------------------- */
+section {
+  width: 100%;
+  padding: var(--space-section) var(--space-gutter);
+  max-width: var(--max-width);
+  margin: 0 auto;
+}
+
+.hero {
+  /* Starter højere oppe i stedet for at centrere i fuld skærmhøjde */
+  padding-top: clamp(2rem, 6vh, 5rem);
+  padding-bottom: clamp(2.5rem, 8vw, 6rem);
+}
+
+/* --- Sektionslabel (01 — Selected work) ----- */
+.label {
+  font-size: clamp(0.6875rem, 2vw, 0.75rem);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin-bottom: clamp(1.25rem, 4vw, 3rem);
+}
+
+/* --- Genbrugelige komponenter --------------- */
+.work-item {
+  border-top: 1px solid var(--line);
+  padding: 2rem 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 2rem;
+}
+
+.work-item span {
+  color: var(--fg-muted);
+  font-size: 0.875rem;
+}
+
+.credits {
+  list-style: none;
+}
+
+.credits li {
+  border-top: 1px solid var(--line);
+  padding: 1.5rem 0;
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 1rem;
+}
+
+.credits strong {
+  font-weight: 500;
+}
+
+.credits em {
+  color: var(--fg-muted);
+  font-style: normal;
+  font-size: 0.875rem;
+}
+
+/* --- Footer --------------------------------- */
+footer {
+  padding: clamp(2.5rem, 6vw, 4rem) var(--space-gutter);
+  text-align: center;
+  color: var(--fg-muted);
+  font-size: 0.875rem;
+  border-top: 1px solid var(--line);
+}
+
+/* --- Hjælpeklasser -------------------------- */
+.meta {
+  margin-top: 3rem;
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+}
+
+/* --- Responsivt ----------------------------- */
+
+/* Store skærme: begræns tekstbredde så linjer ikke bliver for lange */
+@media (min-width: 1440px) {
+  :root {
+    --max-width: 1320px;
+  }
+}
+
+/* Tablets og mindre laptops */
+@media (max-width: 900px) {
+  h1 {
+    max-width: 18ch;
+  }
+}
+
+/* Telefoner */
+@media (max-width: 640px) {
+  nav {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .hero {
+    min-height: auto;
+  }
+
+  .work-item {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .credits li {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+}
+
+/* Små telefoner */
+@media (max-width: 380px) {
+  nav ul {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+/* Foretrækker reduceret bevægelse */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

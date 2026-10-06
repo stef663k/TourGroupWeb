@@ -1,9 +1,11 @@
-# dependencies (bun install)
+# dependencies
 node_modules
 
 # output
 out
+build
 dist
+.svelte-kit
 *.tgz
 
 # code coverage
@@ -26,9 +28,14 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .eslintcache
 .cache
 *.tsbuildinfo
+.cache
+CACHE_DIR
 
 # IntelliJ based IDEs
 .idea
+
+# Vercel
+.vercel
 
 # Finder (MacOS) folder config
 .DS_Store
