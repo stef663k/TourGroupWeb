@@ -1,0 +1,12 @@
+name = "tourgroupweb"
+compatibility_date = "2026-01-01"
+pages_build_output_dir = ".svelte-kit/cloudflare"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "tourgroup"
+database_id = "abd5cbd3-ff4d-4932-84c3-7e0624e71332"
+
+[[r2_buckets]]
+binding = "Bucket"
+bucket_name = "tourgroup-images"

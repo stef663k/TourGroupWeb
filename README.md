@@ -39,4 +39,4 @@ src/
 
 ## Deployment
 
-The project uses `@sveltejs/adapter-vercel` and deploys to Vercel. Pushing the repository triggers a build automatically.
+The project uses `@sveltejs/adapter-cloudflare` and deploys to Cloudflare Pages. The build output is written to `.svelte-kit/cloudflare` (configured via `wrangler.toml`).
