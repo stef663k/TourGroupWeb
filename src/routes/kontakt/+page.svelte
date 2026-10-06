@@ -6,7 +6,7 @@
 <section class="page">
 	<div class="label">Kontakt</div>
 	<h1>Kontakt</h1>
-	<p>Har du spørgsmål? Skriv til os på <a href="mailto:info@tourgroup.dk">info@tourgroup.dk</a>.</p>
+	<h4>Kommer snart</h4>
 </section>
 
 <style>
