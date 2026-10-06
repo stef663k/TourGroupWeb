@@ -8,6 +8,7 @@
 	<a href="/">Tour Group</a>
 	<ul>
 		<li><a href="/">Hjem</a></li>
+		<li><a href="/events">Events</a></li>
 		<li><a href="/om">Om</a></li>
 		<li><a href="/kontakt">Kontakt</a></li>
 	</ul>
