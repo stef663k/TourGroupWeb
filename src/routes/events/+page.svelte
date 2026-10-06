@@ -8,10 +8,20 @@
   <meta name="description" content="Events som Tour Group har været med til at producere." />
 </svelte:head>
 
-<section class="page">
-  <div class="label">Events</div>
+<!-- Hero -->
+<section class="hero">
+  <div class="label">Events · Denmark</div>
   <h1>Events</h1>
+  {#if events.length === 0}
+    <p class="lead">Ingen events lige nu — kom snart igen.</p>
+  {:else}
+    <p class="lead">Et udvalg af events vi har været med til at producere.</p>
+  {/if}
+</section>
 
+<!-- 01 — Kommende events -->
+<section>
+  <div class="label">01 — Kommende events</div>
   {#if events.length === 0}
     <p class="lead">Ingen events lige nu — kom snart igen.</p>
   {:else}
@@ -27,10 +37,6 @@
 </section>
 
 <style>
-  .page {
-    max-width: 48rem;
-  }
-
   .lead {
     font-size: 1.25rem;
     color: #cccccc;
