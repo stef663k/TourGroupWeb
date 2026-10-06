@@ -39,3 +39,4 @@ CACHE_DIR
 
 # Finder (MacOS) folder config
 .DS_Store
+.prompts/

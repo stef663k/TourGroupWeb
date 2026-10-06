@@ -1,16 +1,33 @@
+<script>
+</script>
+
 <svelte:head>
 	<title>Kontakt – Tour Group</title>
 	<meta name="description" content="Kontakt Tour Group" />
 </svelte:head>
 
-<section class="page">
-	<div class="label">Kontakt</div>
+<!-- Hero -->
+<section class="hero">
+	<div class="label">Kontakt · Denmark</div>
 	<h1>Kontakt</h1>
-	<h4>Kommer snart</h4>
+	<p class="lead">Kommer snart</p>
+</section>
+
+<!-- 01 — Kontakt os -->
+<section>
+	<div class="label">01 — Kontakt os</div>
+	<p class="lead">Kommer snart</p>
+</section>
+
+<!-- 02 — Følg os -->
+<section>
+	<div class="label">02 — Følg os</div>
+	<p class="lead">Kommer snart</p>
 </section>
 
 <style>
-	.page {
-		max-width: 48rem;
+	.lead {
+		font-size: 1.25rem;
+		color: #cccccc;
 	}
 </style>
