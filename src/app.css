@@ -65,6 +65,7 @@ h1 {
   font-size: clamp(2.25rem, 9vw, 6rem);
   font-weight: 700;
   max-width: 14ch;
+  margin-inline: auto;
 }
 
 h2 {
@@ -72,6 +73,7 @@ h2 {
   line-height: 1.15;
   letter-spacing: -0.01em;
   max-width: 20ch;
+  margin-inline: auto;
   margin-bottom: 1.5rem;
 }
 
@@ -85,16 +87,17 @@ p {
   font-size: clamp(1rem, 2.5vw, 1.125rem);
   color: #cccccc;
   max-width: 60ch;
+  margin-inline: auto;
   margin-bottom: 1.25rem;
 }
 
 /* --- Navigation ----------------------------- */
 nav {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.75rem 1.5rem;
+  justify-content: center;
+  gap: 0.75rem;
   width: 100%;
   max-width: var(--max-width);
   margin: 0 auto;
@@ -154,6 +157,7 @@ section {
   padding: var(--space-section) var(--space-gutter);
   max-width: var(--max-width);
   margin: 0 auto;
+  text-align: center;
 }
 
 .hero {
@@ -242,11 +246,6 @@ footer {
 
 /* Telefoner */
 @media (max-width: 640px) {
-  nav {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
   .hero {
     min-height: auto;
   }

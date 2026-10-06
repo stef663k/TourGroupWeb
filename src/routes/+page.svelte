@@ -20,15 +20,39 @@
   <p class="lead">Kommer snart</p>
 </section>
 
-<!-- 02 — Credits -->
+<!-- 02 — Samarbejde med virksomheder -->
 <section>
-  <div class="label">02 — Credits</div>
-  <p class="lead">Kommer snart</p>
+  <div class="label">02 — Samarbejde med virksomheder</div>
+  <ul class="partners">
+    <li>Nordic Rentals</li>
+    <li>Profox</li>
+    <li>Eventsuply/Showtech</li>
+    <li>Dr Koncerthuset</li>
+    <li>Tivoli Kongresscenter</li>
+    <li>Bella Center</li>
+  </ul>
 </section>
 
 <style>
   .lead {
     font-size: 1.25rem;
     color: #cccccc;
+  }
+
+  .partners {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  .partners li {
+    width: 100%;
+    max-width: 24rem;
+    border-top: 1px solid var(--line);
+    padding: clamp(1rem, 3vw, 1.5rem) 0;
+    font-size: clamp(1rem, 2.5vw, 1.25rem);
+    color: var(--fg);
   }
 </style>
