@@ -1,5 +1,12 @@
 <script>
-  // Ingen data endnu — udfyldes når der er rigtigt indhold.
+  const partnere = [
+    'Nordic Rentals',
+    'Profox',
+    'Eventsuply/Showtech',
+    'Dr Koncerthuset',
+    'Tivoli Kongresscenter',
+    'Bella Center',
+  ];
 </script>
 
 <svelte:head>
@@ -24,12 +31,9 @@
 <section>
   <div class="label">02 — Samarbejde med virksomheder</div>
   <ul class="partners">
-    <li>Nordic Rentals</li>
-    <li>Profox</li>
-    <li>Eventsuply/Showtech</li>
-    <li>Dr Koncerthuset</li>
-    <li>Tivoli Kongresscenter</li>
-    <li>Bella Center</li>
+    {#each partnere as partner}
+      <li>{partner}</li>
+    {/each}
   </ul>
 </section>
 
