@@ -6,7 +6,7 @@ import type { RequestHandler } from './$types';
  * Nøglen kommer fra catch-all-parameteren [...key].
  */
 export const GET: RequestHandler = async ({ params, platform, request }) => {
-	const bucket = platform?.env.Bucket;
+	const bucket = platform?.env?.Bucket;
 	if (!bucket) error(500, 'Lageret er ikke konfigureret.');
 
 	const key = params.key;

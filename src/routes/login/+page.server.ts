@@ -19,17 +19,30 @@ export const actions: Actions = {
 			return fail(400, { error: 'Indtast venligst en adgangskode.' });
 		}
 
-		const db = platform?.env.DB;
+		const db = platform?.env?.DB;
 		if (!db) {
 			return fail(500, { error: 'Login er ikke konfigureret korrekt på serveren.' });
 		}
 
-		const ok = await verifyOwnerPassword(db, password);
+		let ok: boolean;
+		try {
+			ok = await verifyOwnerPassword(db, password);
+		} catch (err) {
+			console.error('Login fejlede:', err);
+			return fail(500, { error: 'Login er ikke konfigureret korrekt på serveren.' });
+		}
 		if (!ok) {
 			return fail(400, { error: 'Forkert adgangskode.' });
 		}
 
-		const sessionId = await createSession(db, SESSION_TTL_SECONDS);
+		let sessionId: string;
+		try {
+			sessionId = await createSession(db, SESSION_TTL_SECONDS);
+		} catch (err) {
+			console.error('Kunne ikke oprette session:', err);
+			return fail(500, { error: 'Kunne ikke logge ind. Prøv igen senere.' });
+		}
+
 		cookies.set(SESSION_COOKIE_NAME, sessionId, {
 			path: '/',
 			httpOnly: true,

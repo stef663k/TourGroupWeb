@@ -10,15 +10,29 @@ import {
 } from '$lib/server/storage';
 
 export const load: PageServerLoad = async ({ platform }) => {
-	const db = platform?.env.DB;
+	const db = platform?.env?.DB;
 	if (!db) return { events: [], imageBaseUrl: undefined };
 
-	const baseUrl = platform?.env.R2_PUBLIC_URL;
-	const events = await listEvents(db);
+	const baseUrl = platform?.env?.R2_PUBLIC_URL;
+
+	// Hvis databasen ikke er sat op endnu (fx manglende migrationer), må siden
+	// ikke kaste en 500. Vi logger fejlen og viser en tom liste i stedet.
+	let events: Awaited<ReturnType<typeof listEvents>>;
+	try {
+		events = await listEvents(db);
+	} catch (err) {
+		console.error('Kunne ikke hente events:', err);
+		return { events: [], imageBaseUrl: baseUrl };
+	}
 
 	const withImages = await Promise.all(
 		events.map(async (event) => {
-			const images = await listEventImages(db, event.id);
+			let images: Awaited<ReturnType<typeof listEventImages>> = [];
+			try {
+				images = await listEventImages(db, event.id);
+			} catch (err) {
+				console.error(`Kunne ikke hente billeder for event ${event.id}:`, err);
+			}
 			return {
 				...event,
 				images: images.map((img) => ({
@@ -47,7 +61,7 @@ export const actions: Actions = {
 	createEvent: async ({ request, platform, locals }) => {
 		if (!locals.owner) return fail(403, { error: 'Ikke autoriseret.' });
 
-		const db = platform?.env.DB;
+		const db = platform?.env?.DB;
 		if (!db) return fail(500, { error: 'Databasen er ikke konfigureret.' });
 
 		const data = await request.formData();
@@ -73,8 +87,12 @@ export const actions: Actions = {
 				location: location || null,
 				description: description || null
 			});
-		} catch {
-			return fail(400, { error: 'Der findes allerede et event med samme navn.' });
+		} catch (err) {
+			if (err instanceof Error && err.message.includes('UNIQUE')) {
+				return fail(400, { error: 'Der findes allerede et event med samme navn.' });
+			}
+			console.error('Kunne ikke oprette event:', err);
+			return fail(500, { error: 'Kunne ikke oprette event. Prøv igen senere.' });
 		}
 
 		return { success: true };
@@ -83,8 +101,8 @@ export const actions: Actions = {
 	uploadImage: async ({ request, platform, locals }) => {
 		if (!locals.owner) return fail(403, { error: 'Ikke autoriseret.' });
 
-		const db = platform?.env.DB;
-		const bucket = platform?.env.Bucket;
+		const db = platform?.env?.DB;
+		const bucket = platform?.env?.Bucket;
 		if (!db || !bucket) return fail(500, { error: 'Lageret er ikke konfigureret.' });
 
 		const data = await request.formData();
@@ -117,16 +135,21 @@ export const actions: Actions = {
 
 		const key = buildImageKey(event.slug, validation.contentType, crypto.randomUUID());
 
-		await bucket.put(key, await file.arrayBuffer(), {
-			httpMetadata: { contentType: validation.contentType }
-		});
+		try {
+			await bucket.put(key, await file.arrayBuffer(), {
+				httpMetadata: { contentType: validation.contentType }
+			});
 
-		await addEventImage(db, {
-			eventId,
-			r2Key: key,
-			caption: caption || null,
-			contentType: validation.contentType
-		});
+			await addEventImage(db, {
+				eventId,
+				r2Key: key,
+				caption: caption || null,
+				contentType: validation.contentType
+			});
+		} catch (err) {
+			console.error('Kunne ikke uploade billede:', err);
+			return fail(500, { error: 'Kunne ikke uploade billedet. Prøv igen senere.' });
+		}
 
 		return { success: true };
 		}

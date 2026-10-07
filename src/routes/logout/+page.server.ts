@@ -5,10 +5,14 @@ import { deleteSession } from '$lib/server/db';
 
 export const actions: Actions = {
 	default: async ({ cookies, request, platform }) => {
-		const db = platform?.env.DB;
+		const db = platform?.env?.DB;
 		const token = getSessionCookie(request.headers.get('cookie'));
 		if (db && token) {
-			await deleteSession(db, token);
+			try {
+				await deleteSession(db, token);
+			} catch (err) {
+				console.error('Kunne ikke slette session:', err);
+			}
 		}
 		cookies.delete(SESSION_COOKIE_NAME, { path: '/' });
 		redirect(303, '/');
