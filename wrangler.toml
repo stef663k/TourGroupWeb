@@ -6,6 +6,7 @@ pages_build_output_dir = ".svelte-kit/cloudflare"
 binding = "DB"
 database_name = "tourgroup"
 database_id = "abd5cbd3-ff4d-4932-84c3-7e0624e71332"
+migrations_dir = "migrations"
 
 [[r2_buckets]]
 binding = "Bucket"

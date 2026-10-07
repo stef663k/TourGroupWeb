@@ -1,0 +1,7 @@
+# Cloudflare local development secrets (wrangler / vite dev).
+# Kopier til .dev.vars og udfyld med rigtige værdier. .dev.vars er gitignored.
+#
+# Owner-bruger og sessioner gemmes i D1-databasen (binding: DB).
+# Kør migrationer og sæt brugernavn + adgangskode:
+#   npm run db:migrate
+#   npm run set-password "<adgangskode>" --username <navn>

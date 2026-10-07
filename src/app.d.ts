@@ -2,13 +2,19 @@
 declare global {
 	namespace App {
 		interface Platform {
-      	env: {
-        DB: D1Database;
-        BUCKET: R2Bucket;
-      };
-      context: ExecutionContext;
-      caches: CacheStorage;
-    }
+			env: {
+				DB: D1Database;
+				Bucket: R2Bucket;
+				/** Offentlig basis-URL for R2 (fx custom domain). Valgfri. */
+				R2_PUBLIC_URL?: string;
+			};
+			context: ExecutionContext;
+			caches: CacheStorage;
+		}
+
+		interface Locals {
+			owner: boolean;
+		}
 	}
 }
 

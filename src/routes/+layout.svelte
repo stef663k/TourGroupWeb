@@ -1,8 +1,10 @@
 <script lang="ts">
 	import '../app.css';
 	import CookieConsent from '$lib/components/CookieConsent.svelte';
+	import type { Snippet } from 'svelte';
+	import type { LayoutData } from './$types';
 
-	let { children } = $props();
+	let { children, data }: { children: Snippet; data: LayoutData } = $props();
 </script>
 
 <nav>
@@ -12,6 +14,15 @@
 		<li><a href="/events">Events</a></li>
 		<li><a href="/om">Om</a></li>
 		<li><a href="/kontakt">Kontakt</a></li>
+		<li>
+			{#if data.owner}
+				<form method="POST" action="/logout">
+					<button type="submit">Log ud</button>
+				</form>
+			{:else}
+				<a href="/login">Log ind</a>
+			{/if}
+		</li>
 	</ul>
 </nav>
 
