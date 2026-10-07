@@ -60,7 +60,7 @@
     <div class="label">Opret selected work</div>
     <EventForm
       action="?/createWork"
-      fields={['name']}
+      fields={['name', 'years']}
       submitLabel="Tilføj"
       pendingLabel="Tilføjer…"
       error={form?.error}

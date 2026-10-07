@@ -165,4 +165,24 @@ describe('createWork action', () => {
 		expect(db._rows[0].name).toBe('Faustix');
 		expect(db._rows[0].years).toBeNull();
 	});
-});
+
+	it('gemmer det valgfrie år', async () => {
+		const db = createFakeD1();
+		const form = new FormData();
+		form.set('name', 'Aqua');
+		form.set('years', '24-26');
+		const res = await runCreateWork(form, makePlatform(db));
+		expect(res.success).toBe(true);
+		expect(db._rows[0].years).toBe('24-26');
+	});
+
+	it('behandler et tomt år som null', async () => {
+		const db = createFakeD1();
+		const form = new FormData();
+		form.set('name', 'Katinka');
+		form.set('years', '   ');
+		const res = await runCreateWork(form, makePlatform(db));
+		expect(res.success).toBe(true);
+		expect(db._rows[0].years).toBeNull();
+	});
+	});

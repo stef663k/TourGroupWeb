@@ -2,7 +2,7 @@
   import { enhance } from '$app/forms';
   import { compressImage } from '$lib/image';
 
-  type Field = 'name' | 'description' | 'eventDate' | 'location' | 'file';
+  type Field = 'name' | 'years' | 'description' | 'eventDate' | 'location' | 'file';
 
   let {
     error,
@@ -100,6 +100,11 @@
   {#if show('name')}
     <label for="name">Navn</label>
     <input id="name" name="name" type="text" required maxlength="200" />
+  {/if}
+
+  {#if show('years')}
+    <label for="years">År (fx 22-24)</label>
+    <input id="years" name="years" type="text" maxlength="50" placeholder="22-24" />
   {/if}
 
   {#if show('description')}
