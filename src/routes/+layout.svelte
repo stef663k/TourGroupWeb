@@ -1,5 +1,6 @@
 <script lang="ts">
 	import '../app.css';
+	import CookieConsent from '$lib/components/CookieConsent.svelte';
 
 	let { children } = $props();
 </script>
@@ -21,3 +22,5 @@
 <footer>
 	<p>&copy; {new Date().getFullYear()} Tour Group</p>
 </footer>
+
+<CookieConsent />
