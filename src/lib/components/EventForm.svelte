@@ -2,11 +2,27 @@
   import { enhance } from '$app/forms';
   import { compressImage } from '$lib/image';
 
-  let { error }: { error?: string } = $props();
+  type Field = 'name' | 'description' | 'eventDate' | 'location' | 'file';
+
+  let {
+    error,
+    action = '?/createEvent',
+    fields = ['name', 'description', 'eventDate', 'location', 'file'],
+    submitLabel = 'Opret event',
+    pendingLabel = 'Opretter…'
+  }: {
+    error?: string;
+    action?: string;
+    fields?: Field[];
+    submitLabel?: string;
+    pendingLabel?: string;
+  } = $props();
+
+  const show = (field: Field) => fields.includes(field);
 
   let submitting = $state(false);
   let compressing = $state(false);
-  let fileInput: HTMLInputElement;
+  let fileInput = $state<HTMLInputElement>();
   let compressed: File | null = $state(null);
   let previewUrl: string | null = $state(null);
   let note: string | null = $state(null);
@@ -57,7 +73,7 @@
   function onSubmit() {
     submitting = true;
     return async ({ update }: { update: (opts?: { reset?: boolean }) => Promise<void> }) => {
-      if (compressed && fileInput.files?.[0] !== compressed) {
+      if (compressed && fileInput && fileInput.files?.[0] !== compressed) {
         const dt = new DataTransfer();
         dt.items.add(compressed);
         fileInput.files = dt.files;
@@ -76,42 +92,52 @@
 
 <form
   method="POST"
-  action="?/createEvent"
+  {action}
   enctype="multipart/form-data"
   class="form"
   use:enhance={onSubmit}
 >
-  <label for="name">Navn</label>
-  <input id="name" name="name" type="text" required maxlength="200" />
-
-  <label for="description">Beskrivelse</label>
-  <textarea id="description" name="description" rows="3"></textarea>
-
-  <label for="eventDate">Dato</label>
-  <input id="eventDate" name="eventDate" type="date" />
-
-  <label for="location">Sted</label>
-  <input id="location" name="location" type="text" maxlength="200" />
-
-  <label for="file">Billede (JPEG, PNG, WebP, GIF eller AVIF)</label>
-  <input
-    id="file"
-    name="file"
-    type="file"
-    accept="image/*"
-    required
-    bind:this={fileInput}
-    onchange={onFileChange}
-  />
-
-  {#if compressing}
-    <p class="note">Komprimerer billede…</p>
-  {:else if note}
-    <p class="note">{note}</p>
+  {#if show('name')}
+    <label for="name">Navn</label>
+    <input id="name" name="name" type="text" required maxlength="200" />
   {/if}
 
-  {#if previewUrl}
-    <img class="preview" src={previewUrl} alt="Forhåndsvisning af valgt billede" />
+  {#if show('description')}
+    <label for="description">Beskrivelse</label>
+    <textarea id="description" name="description" rows="3"></textarea>
+  {/if}
+
+  {#if show('eventDate')}
+    <label for="eventDate">Dato</label>
+    <input id="eventDate" name="eventDate" type="date" />
+  {/if}
+
+  {#if show('location')}
+    <label for="location">Sted</label>
+    <input id="location" name="location" type="text" maxlength="200" />
+  {/if}
+
+  {#if show('file')}
+    <label for="file">Billede (JPEG, PNG, WebP, GIF eller AVIF)</label>
+    <input
+      id="file"
+      name="file"
+      type="file"
+      accept="image/*"
+      required
+      bind:this={fileInput}
+      onchange={onFileChange}
+    />
+
+    {#if compressing}
+      <p class="note">Komprimerer billede…</p>
+    {:else if note}
+      <p class="note">{note}</p>
+    {/if}
+
+    {#if previewUrl}
+      <img class="preview" src={previewUrl} alt="Forhåndsvisning af valgt billede" />
+    {/if}
   {/if}
 
   {#if error}
@@ -119,7 +145,7 @@
   {/if}
 
   <button type="submit" disabled={submitting || compressing}>
-    {submitting ? 'Opretter…' : 'Opret event'}
+    {submitting ? pendingLabel : submitLabel}
   </button>
 </form>
 

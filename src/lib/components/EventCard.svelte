@@ -23,7 +23,7 @@
   }
 </script>
 
-<li class="event">
+<li class="event" id="event-{event.id}">
   <div class="event-head">
     <time>{formatDate(event.event_date)}</time>
     <span class="name">{event.name}</span>

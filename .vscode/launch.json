@@ -1,15 +1,15 @@
 {
-	"version": "0.2.0",
-	"configurations": [
-		{
-			"name": "dev",
-			"type": "node",
-			"request": "launch",
-			"runtimeExecutable": "npm",
-			"runtimeArgs": ["run", "dev"],
-			"cwd": "${workspaceFolder}",
-			"console": "integratedTerminal",
-			"skipFiles": ["<node_internals>/**"]
-		}
-	]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "dev",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    }
+  ]
 }

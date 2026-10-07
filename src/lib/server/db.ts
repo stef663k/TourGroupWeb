@@ -41,6 +41,14 @@ export interface EventWithImages extends EventRow {
 	images: EventImageRow[];
 }
 
+export interface SelectedWorkRow {
+	id: number;
+	name: string;
+	years: string | null;
+	event_id: number | null;
+	created_at: number;
+}
+
 /**
  * Slår owner-rækken op. Returnerer null hvis den ikke findes.
  */
@@ -192,6 +200,44 @@ export async function createEvent(
 		.first<EventRow>();
 	if (!result) throw new Error('Kunne ikke oprette event.');
 	return result;
+}
+
+/**
+ * Henter alle selected-work-rækker sorteret med nyeste først.
+ */
+export async function listSelectedWork(db: D1Database): Promise<SelectedWorkRow[]> {
+	const result = await db
+		.prepare(
+			'SELECT id, name, years, event_id, created_at FROM selected_work ' +
+				'ORDER BY id DESC'
+		)
+		.all<SelectedWorkRow>();
+	return result.results;
+}
+
+/**
+ * Opretter en selected-work-række og returnerer den.
+ */
+export async function createSelectedWork(
+	db: D1Database,
+	input: { name: string; years?: string | null; eventId?: number | null }
+): Promise<SelectedWorkRow> {
+	const result = await db
+		.prepare(
+			'INSERT INTO selected_work (name, years, event_id) ' +
+				'VALUES (?1, ?2, ?3) RETURNING id, name, years, event_id, created_at'
+		)
+		.bind(input.name, input.years ?? null, input.eventId ?? null)
+		.first<SelectedWorkRow>();
+	if (!result) throw new Error('Kunne ikke oprette selected work.');
+	return result;
+}
+
+/**
+ * Sletter en selected-work-række.
+ */
+export async function deleteSelectedWork(db: D1Database, id: number): Promise<void> {
+	await db.prepare('DELETE FROM selected_work WHERE id = ?1').bind(id).run();
 }
 
 /**
