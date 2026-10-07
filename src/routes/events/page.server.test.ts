@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { load } from './+page.server';
+import { load, actions } from './+page.server';
 
 /**
  * Minimal in-memory D1-stub der understøtter de SQL-forespørgsler
@@ -50,22 +50,100 @@ function createFakeD1() {
 					};
 				}
 				throw new Error(`Unsupported SQL: ${q}`);
+			},
+			async first<T>() {
+				if (q.startsWith('INSERT INTO events')) {
+					const [slug, name, event_date, location, description] = args as [
+						string,
+						string,
+						string | null,
+						string | null,
+						string | null
+					];
+					if (events.some((e) => e.slug === slug)) {
+						throw new Error('UNIQUE constraint failed: events.slug');
+					}
+					const row = {
+						id: events.length + 1,
+						slug,
+						name,
+						event_date,
+						location,
+						description,
+						created_at: 0
+					};
+					events.push(row);
+					return row as T;
+				}
+				if (q.startsWith('INSERT INTO event_images')) {
+					const [event_id, r2_key, caption, content_type, sort_order] = args as [
+						number,
+						string,
+						string | null,
+						string,
+						number
+					];
+					const row = {
+						id: images.length + 1,
+						event_id,
+						r2_key,
+						caption,
+						content_type,
+						sort_order,
+						created_at: 0
+					};
+					images.push(row);
+					return row as T;
+				}
+				throw new Error(`Unsupported SQL: ${q}`);
 			}
 		};
 		return statement;
-	};
+		};
 
-	return {
+		return {
 		prepare,
+		_images: images,
 		_seed: (rows: typeof events, imageRows: typeof images) => {
 			events.push(...rows);
 			images.push(...imageRows);
 		}
-	};
-}
+		};
+		}
 
 function makePlatform(db: unknown, r2PublicUrl?: string) {
 	return { env: { DB: db, Bucket: {}, R2_PUBLIC_URL: r2PublicUrl } } as App.Platform;
+}
+
+/** Minimal R2-stub der registrerer puts. */
+function createFakeBucket() {
+	const put = vi.fn(
+		async (_key: string, _value: ArrayBuffer, _opts?: { httpMetadata?: { contentType?: string } }) => ({})
+	);
+	return { put, _puts: put };
+}
+
+function jpegFile(name = 'foto.jpg', size = 1024): File {
+	const bytes = new Uint8Array(size);
+	// JPEG magic bytes.
+	bytes.set([0xff, 0xd8, 0xff, 0xe0], 0);
+	return new File([bytes], name, { type: 'image/jpeg' });
+}
+
+type ActionResult = { status?: number; error?: string; success?: boolean };
+
+async function runCreateEvent(
+	form: FormData,
+	platform: unknown,
+	owner = true
+): Promise<ActionResult> {
+	const action = actions.createEvent;
+	const result = await action({
+		request: new Request('http://localhost/events?/createEvent', { method: 'POST', body: form }),
+		platform,
+		locals: { owner }
+	} as never);
+	return result as unknown as ActionResult;
 }
 
 type LoadResult = { events: { images: { id: number; caption: string | null; url: string }[] }[]; imageBaseUrl: string | undefined };
@@ -171,5 +249,101 @@ describe('events load', () => {
 
 		const data = await runLoad(makePlatform(db));
 		expect(data.events[0].images[0].url).toBe('/images/events/fest/x.png');
-	});
-});
+		});
+		});
+
+		describe('createEvent action', () => {
+		let errorSpy: ReturnType<typeof vi.spyOn>;
+
+		beforeEach(() => {
+		errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		});
+
+		afterEach(() => {
+		errorSpy.mockRestore();
+		});
+
+		it('afviser en ikke-owner', async () => {
+		const form = new FormData();
+		form.set('name', 'Fest');
+		form.set('file', jpegFile());
+		const res = await runCreateEvent(form, makePlatform(createFakeD1(), undefined), false);
+		expect(res.status).toBe(403);
+		});
+
+		it('kræver et navn', async () => {
+		const form = new FormData();
+		form.set('file', jpegFile());
+		const res = await runCreateEvent(form, makePlatform(createFakeD1()));
+		expect(res.status).toBe(400);
+		});
+
+		it('kræver et billede', async () => {
+		const form = new FormData();
+		form.set('name', 'Fest');
+		const res = await runCreateEvent(form, makePlatform(createFakeD1()));
+		expect(res.status).toBe(400);
+		});
+
+		it('afviser en tom fil', async () => {
+		const form = new FormData();
+		form.set('name', 'Fest');
+		form.set('file', new File([], 'tom.jpg', { type: 'image/jpeg' }));
+		const res = await runCreateEvent(form, makePlatform(createFakeD1()));
+		expect(res.status).toBe(400);
+		});
+
+		it('afviser en fil hvis indhold ikke matcher typen', async () => {
+		const form = new FormData();
+		form.set('name', 'Fest');
+		form.set('file', new File([new Uint8Array([1, 2, 3, 4])], 'falsk.png', { type: 'image/png' }));
+		const res = await runCreateEvent(form, makePlatform(createFakeD1()));
+		expect(res.status).toBe(400);
+		});
+
+		it('opretter event og gemmer billedet i bucket', async () => {
+		const db = createFakeD1();
+		const bucket = createFakeBucket();
+		const platform = { env: { DB: db, Bucket: bucket } } as unknown as App.Platform;
+
+		const form = new FormData();
+		form.set('name', 'Sommerfest');
+		form.set('description', 'En fest');
+		form.set('file', jpegFile());
+
+		const res = await runCreateEvent(form, platform);
+		expect(res.success).toBe(true);
+		expect(bucket._puts).toHaveBeenCalledTimes(1);
+		const [key, , opts] = bucket._puts.mock.calls[0];
+		expect(key).toMatch(/^events\/sommerfest\/.+\.jpg$/);
+		expect(opts?.httpMetadata?.contentType).toBe('image/jpeg');
+		});
+
+		it('afviser en dublet-slug', async () => {
+		const db = createFakeD1();
+		db._seed(
+			[
+				{
+					id: 1,
+					slug: 'sommerfest',
+					name: 'Sommerfest',
+					event_date: null,
+					location: null,
+					description: null,
+					created_at: 0
+				}
+			],
+			[]
+		);
+		const bucket = createFakeBucket();
+		const platform = { env: { DB: db, Bucket: bucket } } as unknown as App.Platform;
+
+		const form = new FormData();
+		form.set('name', 'Sommerfest');
+		form.set('file', jpegFile());
+
+		const res = await runCreateEvent(form, platform);
+		expect(res.status).toBe(400);
+		expect(bucket._puts).not.toHaveBeenCalled();
+		});
+		});

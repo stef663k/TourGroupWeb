@@ -7,7 +7,11 @@
 // Scriptet opdaterer users-rækken (id = 1).
 
 import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
 import { webcrypto } from 'node:crypto';
+
+const require = createRequire(import.meta.url);
 
 const PBKDF2_ITERATIONS = 100_000;
 const KEY_LENGTH_BITS = 256;
@@ -64,8 +68,13 @@ const hash = await hashPassword(password);
 const escapedUsername = username.replace(/'/g, "''");
 const sql = `INSERT INTO users (id, username, password_hash) VALUES (1, '${escapedUsername}', '${hash}') ON CONFLICT (id) DO UPDATE SET username = excluded.username, password_hash = excluded.password_hash;`;
 
+// Slå wrangler's JS-entrypoint op, så vi ikke er afhængige af npx eller PATH.
+const wranglerPkgPath = require.resolve('wrangler/package.json');
+const wranglerRoot = dirname(wranglerPkgPath);
+const wranglerBin = join(wranglerRoot, require(wranglerPkgPath).bin.wrangler);
+
 const wranglerArgs = [
-	'wrangler',
+	wranglerBin,
 	'd1',
 	'execute',
 	'tourgroup',
@@ -74,4 +83,6 @@ const wranglerArgs = [
 	sql
 ];
 
-execFileSync('npx', wranglerArgs, { stdio: 'inherit' });
+// Kør wrangler via den aktuelle Node-installation og wrangler's JS-entrypoint.
+// Det undgår npx/.cmd-shims og virker ens på Windows og POSIX.
+execFileSync(process.execPath, wranglerArgs, { stdio: 'inherit' });

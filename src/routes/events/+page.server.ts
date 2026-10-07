@@ -1,6 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { createEvent, listEvents, listEventImages, addEventImage, getEvent } from '$lib/server/db';
+import { createEvent, listEvents, listEventImages, addEventImage } from '$lib/server/db';
 import {
 	buildImageKey,
 	publicImageUrl,
@@ -62,6 +62,7 @@ export const actions: Actions = {
 		if (!locals.owner) return fail(403, { error: 'Ikke autoriseret.' });
 
 		const db = platform?.env?.DB;
+		const bucket = platform?.env?.Bucket;
 		if (!db) return fail(500, { error: 'Databasen er ikke konfigureret.' });
 
 		const data = await request.formData();
@@ -69,6 +70,7 @@ export const actions: Actions = {
 		const eventDate = String(data.get('eventDate') ?? '').trim();
 		const location = String(data.get('location') ?? '').trim();
 		const description = String(data.get('description') ?? '').trim();
+		const file = data.get('file');
 
 		if (!name) return fail(400, { error: 'Navn er påkrævet.' });
 		if (name.length > 200) return fail(400, { error: 'Navnet er for langt.' });
@@ -79,8 +81,26 @@ export const actions: Actions = {
 			return fail(400, { error: 'Dato skal være i formatet ÅÅÅÅ-MM-DD.' });
 		}
 
+		if (!(file instanceof File) || file.size === 0) {
+			return fail(400, { error: 'Vælg et billede.' });
+		}
+		if (!bucket) return fail(500, { error: 'Lageret er ikke konfigureret.' });
+
+		if (file.size > MAX_IMAGE_BYTES) {
+			return fail(400, { error: 'Filen er for stor (maks 8 MB).' });
+		}
+
+		const head = await readImageHead(file);
+		const validation = validateImage({
+			contentType: file.type,
+			size: file.size,
+			head
+		});
+		if (!validation.ok) return fail(400, { error: validation.error });
+
+		let created: Awaited<ReturnType<typeof createEvent>>;
 		try {
-			await createEvent(db, {
+			created = await createEvent(db, {
 				slug,
 				name,
 				eventDate: eventDate || null,
@@ -95,45 +115,7 @@ export const actions: Actions = {
 			return fail(500, { error: 'Kunne ikke oprette event. Prøv igen senere.' });
 		}
 
-		return { success: true };
-	},
-
-	uploadImage: async ({ request, platform, locals }) => {
-		if (!locals.owner) return fail(403, { error: 'Ikke autoriseret.' });
-
-		const db = platform?.env?.DB;
-		const bucket = platform?.env?.Bucket;
-		if (!db || !bucket) return fail(500, { error: 'Lageret er ikke konfigureret.' });
-
-		const data = await request.formData();
-		const eventId = Number(data.get('eventId'));
-		const caption = String(data.get('caption') ?? '').trim();
-		const file = data.get('file');
-
-		if (!Number.isInteger(eventId) || eventId <= 0) {
-			return fail(400, { error: 'Ugyldigt event.' });
-		}
-
-		const event = await getEvent(db, eventId);
-		if (!event) return fail(404, { error: 'Eventet findes ikke.' });
-
-		if (!(file instanceof File)) {
-			return fail(400, { error: 'Vælg en fil.' });
-		}
-
-		if (file.size > MAX_IMAGE_BYTES) {
-			return fail(400, { error: 'Filen er for stor (maks 8 MB).' });
-		}
-
-		const head = await readImageHead(file);
-		const validation = validateImage({
-			contentType: file.type,
-			size: file.size,
-			head
-		});
-		if (!validation.ok) return fail(400, { error: validation.error });
-
-		const key = buildImageKey(event.slug, validation.contentType, crypto.randomUUID());
+		const key = buildImageKey(created.slug, validation.contentType, crypto.randomUUID());
 
 		try {
 			await bucket.put(key, await file.arrayBuffer(), {
@@ -141,16 +123,16 @@ export const actions: Actions = {
 			});
 
 			await addEventImage(db, {
-				eventId,
+				eventId: created.id,
 				r2Key: key,
-				caption: caption || null,
+				caption: null,
 				contentType: validation.contentType
 			});
 		} catch (err) {
 			console.error('Kunne ikke uploade billede:', err);
-			return fail(500, { error: 'Kunne ikke uploade billedet. Prøv igen senere.' });
+			return fail(500, { error: 'Eventet blev oprettet, men billedet kunne ikke uploades.' });
 		}
 
 		return { success: true };
-		}
-		};
+	}
+};
