@@ -6,8 +6,10 @@ import {
 	listEventImages,
 	addEventImage,
 	getEvent,
+	getEventImage,
 	updateEvent,
-	deleteEvent
+	deleteEvent,
+	removeEventImage
 } from '$lib/server/db';
 import {
 	buildImageKey,
@@ -182,6 +184,7 @@ export const actions: Actions = {
 		const eventDate = String(data.get('eventDate') ?? '').trim();
 		const location = String(data.get('location') ?? '').trim();
 		const description = String(data.get('description') ?? '').trim();
+		const details = String(data.get('details') ?? '').trim();
 		const link = String(data.get('link') ?? '').trim();
 
 		if (!name) return fail(400, { error: 'Name is required.' });
@@ -206,6 +209,7 @@ export const actions: Actions = {
 				eventDate: eventDate || null,
 				location: location || null,
 				description: description || null,
+				details: details || null,
 				link: link || null
 			});
 		} catch (err) {
@@ -214,6 +218,93 @@ export const actions: Actions = {
 			}
 			console.error('Kunne ikke opdatere event:', err);
 			return fail(500, { error: 'Could not save the event. Please try again later.' });
+		}
+
+		return { success: true };
+	},
+
+	addEventImage: async ({ request, platform, locals }) => {
+		if (!locals.owner) return fail(403, { error: 'Not authorized.' });
+
+		const db = platform?.env?.DB;
+		const bucket = platform?.env?.Bucket;
+		if (!db) return fail(500, { error: 'The database is not configured.' });
+		if (!bucket) return fail(500, { error: 'Storage is not configured.' });
+
+		const data = await request.formData();
+		const id = Number(String(data.get('id') ?? '').trim());
+		if (!Number.isInteger(id)) return fail(400, { error: 'Invalid event.' });
+
+		const caption = String(data.get('caption') ?? '').trim();
+		if (caption.length > 200) return fail(400, { error: 'The caption is too long.' });
+
+		const file = data.get('file');
+		if (!(file instanceof File) || file.size === 0) {
+			return fail(400, { error: 'Choose an image.' });
+		}
+		if (file.size > MAX_IMAGE_BYTES) {
+			return fail(400, { error: 'The file is too large (max 8 MB).' });
+		}
+
+		const event = await getEvent(db, id);
+		if (!event) return fail(404, { error: 'The event does not exist.' });
+
+		const head = await readImageHead(file);
+		const validation = validateImage({
+			contentType: file.type,
+			size: file.size,
+			head
+		});
+		if (!validation.ok) return fail(400, { error: validation.error });
+
+		const key = buildImageKey(event.slug, validation.contentType, crypto.randomUUID());
+
+		try {
+			await bucket.put(key, await file.arrayBuffer(), {
+				httpMetadata: { contentType: validation.contentType }
+			});
+
+			await addEventImage(db, {
+				eventId: id,
+				r2Key: key,
+				caption: caption || null,
+				contentType: validation.contentType
+			});
+		} catch (err) {
+			console.error('Kunne ikke tilføje billede:', err);
+			return fail(500, { error: 'Could not add the image. Please try again later.' });
+		}
+
+		return { success: true };
+	},
+
+	removeEventImage: async ({ request, platform, locals }) => {
+		if (!locals.owner) return fail(403, { error: 'Not authorized.' });
+
+		const db = platform?.env?.DB;
+		if (!db) return fail(500, { error: 'The database is not configured.' });
+
+		const data = await request.formData();
+		const id = Number(String(data.get('id') ?? '').trim());
+		if (!Number.isInteger(id)) return fail(400, { error: 'Invalid image.' });
+
+		const image = await getEventImage(db, id);
+		if (!image) return fail(404, { error: 'The image does not exist.' });
+
+		const bucket = platform?.env?.Bucket;
+		if (bucket) {
+			try {
+				await bucket.delete(image.r2_key);
+			} catch (err) {
+				console.error(`Kunne ikke slette billede ${id} i R2:`, err);
+			}
+		}
+
+		try {
+			await removeEventImage(db, id);
+		} catch (err) {
+			console.error('Kunne ikke slette billede:', err);
+			return fail(500, { error: 'Could not delete the image. Please try again later.' });
 		}
 
 		return { success: true };

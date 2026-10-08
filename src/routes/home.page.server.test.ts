@@ -22,6 +22,7 @@ function createFakeD1() {
 		event_date: string | null;
 		location: string | null;
 		description: string | null;
+		details: string | null;
 		link: string | null;
 		created_at: number;
 	}[] = [];
@@ -56,7 +57,7 @@ function createFakeD1() {
 					const [id] = args as [number];
 					return (rows.find((r) => r.id === id) ?? null) as T | null;
 				}
-				if (q.startsWith('SELECT id, slug, name, event_date, location, description, link, created_at FROM events WHERE id')) {
+				if (q.startsWith('SELECT id, slug, name, event_date, location, description, details, link, created_at FROM events WHERE id')) {
 					const [id] = args as [number];
 					return (events.find((e) => e.id === id) ?? null) as T | null;
 				}
@@ -67,7 +68,7 @@ function createFakeD1() {
 				if (q.startsWith('SELECT id, name, years, event_id, created_at FROM artists ORDER BY')) {
 					return { results: [...rows].sort((a, b) => b.id - a.id) as T[], success: true };
 				}
-				if (q.startsWith('SELECT id, slug, name, event_date, location, description, link, created_at FROM events ORDER BY')) {
+				if (q.startsWith('SELECT id, slug, name, event_date, location, description, details, link, created_at FROM events ORDER BY')) {
 					return { results: events as T[], success: true };
 				}
 				throw new Error(`Unsupported SQL in all(): ${q}`);
@@ -98,6 +99,7 @@ function createFakeD1() {
 				event_date: null,
 				location: null,
 				description: null,
+				details: null,
 				link: null,
 				created_at: 0
 				});

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import EventForm from './EventForm.svelte';
+  import EventModal from './EventModal.svelte';
 
   interface EventImage {
     id: number;
@@ -14,6 +15,7 @@
     event_date: string | null;
     location: string | null;
     description: string | null;
+    details: string | null;
     link: string | null;
     images: EventImage[];
   }
@@ -21,6 +23,7 @@
   let { event, owner = false }: { event: Event; owner?: boolean } = $props();
 
   let editing = $state(false);
+  let showModal = $state(false);
 
   function formatDate(iso: string | null): string {
     if (!iso) return 'Date to be announced';
@@ -96,18 +99,17 @@
     </ul>
   {/if}
   <div class="event-foot">
-    {#if event.link}
-      <a
-        class="more"
-        href={event.link}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="More about {event.name}"
-      >
-        More
-        <span class="more-arrow" aria-hidden="true">→</span>
-      </a>
-    {/if}
+    <button
+      type="button"
+      class="more"
+      aria-haspopup="dialog"
+      aria-expanded={showModal}
+      aria-label="More about {event.name}"
+      onclick={() => (showModal = true)}
+    >
+      More
+      <span class="more-arrow" aria-hidden="true">→</span>
+    </button>
   </div>
   {#if owner && editing}
     <div class="edit-panel">
@@ -127,9 +129,12 @@
         onSuccess={() => (editing = false)}
       />
       <button type="button" class="cancel" onclick={() => (editing = false)}>Cancel</button>
-    </div>
-  {/if}
-</li>
+      </div>
+      {/if}
+      {#if showModal}
+      <EventModal {event} {owner} onclose={() => (showModal = false)} />
+      {/if}
+      </li>
 
 <style>
   .event {
@@ -254,9 +259,14 @@
     display: inline-flex;
     align-items: center;
     gap: 0.375rem;
+    padding: 0;
+    font-family: inherit;
     font-size: 0.875rem;
     color: var(--fg-muted);
+    background: transparent;
+    border: none;
     border-bottom: none;
+    cursor: pointer;
     transition: color 0.2s var(--ease);
   }
 

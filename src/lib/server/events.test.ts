@@ -25,6 +25,7 @@ function createFakeD1(): D1Database {
 		event_date: string | null;
 		location: string | null;
 		description: string | null;
+		details: string | null;
 		link: string | null;
 		created_at: number;
 	}[] = [];
@@ -44,7 +45,7 @@ function createFakeD1(): D1Database {
 
 		const firstStatement = <T>() => {
 			const q = normalized();
-			if (q.startsWith('SELECT id, slug, name, event_date, location, description, link, created_at FROM events WHERE id')) {
+			if (q.startsWith('SELECT id, slug, name, event_date, location, description, details, link, created_at FROM events WHERE id')) {
 				const [id] = args as [number];
 				return (events.find((e) => e.id === id) ?? null) as T | null;
 			}
@@ -57,9 +58,10 @@ function createFakeD1(): D1Database {
 				return (images.find((i) => i.id === id) ?? null) as T | null;
 			}
 			if (q.startsWith('INSERT INTO events')) {
-				const [slug, name, event_date, location, description, link] = args as [
+				const [slug, name, event_date, location, description, details, link] = args as [
 					string,
 					string,
+					string | null,
 					string | null,
 					string | null,
 					string | null,
@@ -75,6 +77,7 @@ function createFakeD1(): D1Database {
 					event_date,
 					location,
 					description,
+					details,
 					link,
 					created_at: Math.floor(Date.now() / 1000)
 				};
@@ -105,9 +108,10 @@ function createFakeD1(): D1Database {
 				return row as T;
 			}
 			if (q.startsWith('UPDATE events SET')) {
-				const [slug, name, event_date, location, description, link, id] = args as [
+				const [slug, name, event_date, location, description, details, link, id] = args as [
 					string,
 					string,
+					string | null,
 					string | null,
 					string | null,
 					string | null,
@@ -124,6 +128,7 @@ function createFakeD1(): D1Database {
 				row.event_date = event_date;
 				row.location = location;
 				row.description = description;
+				row.details = details;
 				row.link = link;
 				return row as T;
 			}
@@ -132,7 +137,7 @@ function createFakeD1(): D1Database {
 
 		const allStatement = <T>() => {
 			const q = normalized();
-			if (q.startsWith('SELECT id, slug, name, event_date, location, description, link, created_at FROM events ORDER BY')) {
+			if (q.startsWith('SELECT id, slug, name, event_date, location, description, details, link, created_at FROM events ORDER BY')) {
 				const sorted = [...events].sort((a, b) => {
 					const aNull = a.event_date === null ? 1 : 0;
 					const bNull = b.event_date === null ? 1 : 0;
@@ -217,7 +222,8 @@ describe('events', () => {
 			name: 'Sommerfest',
 			eventDate: '2026-07-01',
 			location: 'København',
-			description: 'En fest'
+			description: 'En fest',
+			details: 'En meget længere beskrivelse af festen.'
 		});
 		expect(created.id).toBeGreaterThan(0);
 
@@ -225,6 +231,7 @@ describe('events', () => {
 		expect(fetched?.name).toBe('Sommerfest');
 		expect(fetched?.location).toBe('København');
 		expect(fetched?.event_date).toBe('2026-07-01');
+		expect(fetched?.details).toBe('En meget længere beskrivelse af festen.');
 	});
 
 	it('gemmer valgfrie felter som null', async () => {
@@ -232,6 +239,7 @@ describe('events', () => {
 		expect(created.event_date).toBeNull();
 		expect(created.location).toBeNull();
 		expect(created.description).toBeNull();
+		expect(created.details).toBeNull();
 		expect(created.link).toBeNull();
 	});
 
@@ -262,6 +270,23 @@ describe('events', () => {
 			link: null
 		});
 		expect(cleared?.link).toBeNull();
+	});
+
+	it('opdaterer details på et event', async () => {
+		const created = await createEvent(db, { slug: 'skift-details', name: 'Skift details' });
+		const updated = await updateEvent(db, created.id, {
+			slug: created.slug,
+			name: created.name,
+			details: 'Ny uddybende tekst'
+		});
+		expect(updated?.details).toBe('Ny uddybende tekst');
+
+		const cleared = await updateEvent(db, created.id, {
+			slug: created.slug,
+			name: created.name,
+			details: null
+		});
+		expect(cleared?.details).toBeNull();
 	});
 
 	it('afviser en dublet-slug', async () => {

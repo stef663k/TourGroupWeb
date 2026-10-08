@@ -6,6 +6,7 @@
     | 'name'
     | 'years'
     | 'description'
+    | 'details'
     | 'eventDate'
     | 'location'
     | 'link'
@@ -36,6 +37,7 @@
       name?: string | null;
       years?: string | null;
       description?: string | null;
+      details?: string | null;
       eventDate?: string | null;
       location?: string | null;
       link?: string | null;
@@ -165,6 +167,11 @@
   {#if show('description')}
     <label for="description">Description</label>
     <textarea id="description" name="description" rows="3">{initial.description ?? ''}</textarea>
+  {/if}
+
+  {#if show('details')}
+    <label for="details">Details (shown inside the event modal)</label>
+    <textarea id="details" name="details" rows="5">{initial.details ?? ''}</textarea>
   {/if}
 
   {#if show('eventDate')}
