@@ -31,6 +31,23 @@
   // svelte-ignore state_referenced_locally
   let details = $state(event.details ?? '');
 
+  // Re-sync the editable fields only when the parent passes a genuinely new
+  // saved value (e.g. after the update action re-runs the load). Comparing
+  // against the values we last synced from avoids clobbering unsaved edits
+  // when unrelated reloads (like adding/removing photos) happen.
+  // svelte-ignore state_referenced_locally
+  let syncedName = event.name;
+  // svelte-ignore state_referenced_locally
+  let syncedDetails = event.details ?? '';
+  $effect(() => {
+    if (event.name !== syncedName || (event.details ?? '') !== syncedDetails) {
+      syncedName = event.name;
+      syncedDetails = event.details ?? '';
+      name = event.name;
+      details = event.details ?? '';
+    }
+  });
+
   let fileInput = $state<HTMLInputElement>();
   let compressed: File | null = $state(null);
   let previewUrl: string | null = $state(null);
@@ -113,6 +130,22 @@
     }
   }
 
+  // Submit the details form without resetting it, so the typed/saved text
+  // stays visible after the action completes.
+  function onSubmitDetails() {
+    let submitting = false;
+    return async ({
+      update
+    }: {
+      update: (opts?: { reset?: boolean }) => Promise<void>;
+    }) => {
+      if (submitting) return;
+      submitting = true;
+      await update({ reset: false });
+      submitting = false;
+    };
+  }
+
   $effect(() => () => revokePreview());
 </script>
 
@@ -133,7 +166,7 @@
 
     <div class="modal-body">
       {#if owner}
-        <form method="POST" action="?/updateEvent" use:enhance class="edit-form">
+        <form method="POST" action="?/updateEvent" use:enhance={onSubmitDetails} class="edit-form">
           <input type="hidden" name="id" value={event.id} />
           <input type="hidden" name="eventDate" value={event.event_date ?? ''} />
           <input type="hidden" name="location" value={event.location ?? ''} />
