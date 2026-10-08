@@ -3,6 +3,7 @@ import {
 	listEvents,
 	getEvent,
 	createEvent,
+	updateEvent,
 	deleteEvent,
 	addEventImage,
 	listEventImages,
@@ -24,6 +25,7 @@ function createFakeD1(): D1Database {
 		event_date: string | null;
 		location: string | null;
 		description: string | null;
+		link: string | null;
 		created_at: number;
 	}[] = [];
 	const images: {
@@ -42,7 +44,7 @@ function createFakeD1(): D1Database {
 
 		const firstStatement = <T>() => {
 			const q = normalized();
-			if (q.startsWith('SELECT id, slug, name, event_date, location, description, created_at FROM events WHERE id')) {
+			if (q.startsWith('SELECT id, slug, name, event_date, location, description, link, created_at FROM events WHERE id')) {
 				const [id] = args as [number];
 				return (events.find((e) => e.id === id) ?? null) as T | null;
 			}
@@ -55,9 +57,10 @@ function createFakeD1(): D1Database {
 				return (images.find((i) => i.id === id) ?? null) as T | null;
 			}
 			if (q.startsWith('INSERT INTO events')) {
-				const [slug, name, event_date, location, description] = args as [
+				const [slug, name, event_date, location, description, link] = args as [
 					string,
 					string,
+					string | null,
 					string | null,
 					string | null,
 					string | null
@@ -72,6 +75,7 @@ function createFakeD1(): D1Database {
 					event_date,
 					location,
 					description,
+					link,
 					created_at: Math.floor(Date.now() / 1000)
 				};
 				events.push(row);
@@ -100,12 +104,35 @@ function createFakeD1(): D1Database {
 				images.push(row);
 				return row as T;
 			}
+			if (q.startsWith('UPDATE events SET')) {
+				const [slug, name, event_date, location, description, link, id] = args as [
+					string,
+					string,
+					string | null,
+					string | null,
+					string | null,
+					string | null,
+					number
+				];
+				if (events.some((e) => e.slug === slug && e.id !== id)) {
+					throw new Error('UNIQUE constraint failed: events.slug');
+				}
+				const row = events.find((e) => e.id === id);
+				if (!row) return null;
+				row.slug = slug;
+				row.name = name;
+				row.event_date = event_date;
+				row.location = location;
+				row.description = description;
+				row.link = link;
+				return row as T;
+			}
 			throw new Error(`Unsupported SQL in first(): ${q}`);
 		};
 
 		const allStatement = <T>() => {
 			const q = normalized();
-			if (q.startsWith('SELECT id, slug, name, event_date, location, description, created_at FROM events ORDER BY')) {
+			if (q.startsWith('SELECT id, slug, name, event_date, location, description, link, created_at FROM events ORDER BY')) {
 				const sorted = [...events].sort((a, b) => {
 					const aNull = a.event_date === null ? 1 : 0;
 					const bNull = b.event_date === null ? 1 : 0;
@@ -205,6 +232,36 @@ describe('events', () => {
 		expect(created.event_date).toBeNull();
 		expect(created.location).toBeNull();
 		expect(created.description).toBeNull();
+		expect(created.link).toBeNull();
+	});
+
+	it('gemmer og læser et link på et event', async () => {
+		const created = await createEvent(db, {
+			slug: 'med-link',
+			name: 'Med link',
+			link: 'https://example.com/billetter'
+		});
+		expect(created.link).toBe('https://example.com/billetter');
+
+		const fetched = await getEvent(db, created.id);
+		expect(fetched?.link).toBe('https://example.com/billetter');
+	});
+
+	it('opdaterer linket på et event', async () => {
+		const created = await createEvent(db, { slug: 'skift-link', name: 'Skift link' });
+		const updated = await updateEvent(db, created.id, {
+			slug: created.slug,
+			name: created.name,
+			link: 'https://example.com/ny-url'
+		});
+		expect(updated?.link).toBe('https://example.com/ny-url');
+
+		const cleared = await updateEvent(db, created.id, {
+			slug: created.slug,
+			name: created.name,
+			link: null
+		});
+		expect(cleared?.link).toBeNull();
 	});
 
 	it('afviser en dublet-slug', async () => {

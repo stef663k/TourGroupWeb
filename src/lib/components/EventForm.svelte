@@ -2,14 +2,22 @@
   import { enhance } from '$app/forms';
   import { compressImage } from '$lib/image';
 
-  type Field = 'name' | 'years' | 'description' | 'eventDate' | 'location' | 'file' | 'event';
+  type Field =
+    | 'name'
+    | 'years'
+    | 'description'
+    | 'eventDate'
+    | 'location'
+    | 'link'
+    | 'file'
+    | 'event';
 
   type EventOption = { id: number; name: string };
 
   let {
     error,
     action = '?/createEvent',
-    fields = ['name', 'description', 'eventDate', 'location', 'file'],
+    fields = ['name', 'description', 'eventDate', 'location', 'link', 'file'],
     submitLabel = 'Create event',
     pendingLabel = 'Creating…',
     events = [],
@@ -30,6 +38,7 @@
       description?: string | null;
       eventDate?: string | null;
       location?: string | null;
+      link?: string | null;
     };
     id?: number | null;
     requireImage?: boolean;
@@ -171,6 +180,18 @@
       type="text"
       value={initial.location ?? ''}
       maxlength="200"
+    />
+  {/if}
+
+  {#if show('link')}
+    <label for="link">Link (optional)</label>
+    <input
+      id="link"
+      name="link"
+      type="url"
+      value={initial.link ?? ''}
+      maxlength="2048"
+      placeholder="https://…"
     />
   {/if}
 

@@ -14,6 +14,7 @@
     event_date: string | null;
     location: string | null;
     description: string | null;
+    link: string | null;
     images: EventImage[];
   }
 
@@ -90,17 +91,32 @@
       {/each}
     </ul>
   {/if}
+  <div class="event-foot">
+    {#if event.link}
+      <a
+        class="more"
+        href={event.link}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="More about {event.name}"
+      >
+        More
+        <span class="more-arrow" aria-hidden="true">→</span>
+      </a>
+    {/if}
+  </div>
   {#if owner && editing}
     <div class="edit-panel">
       <EventForm
         action="?/updateEvent"
-        fields={['name', 'description', 'eventDate', 'location']}
+        fields={['name', 'description', 'eventDate', 'location', 'link']}
         id={event.id}
         initial={{
           name: event.name,
           description: event.description,
           eventDate: event.event_date,
-          location: event.location
+          location: event.location,
+          link: event.link
         }}
         submitLabel="Save"
         pendingLabel="Saving…"
@@ -117,6 +133,7 @@
     flex-direction: column;
     gap: 0.75rem;
     padding: clamp(1rem, 3vw, 1.5rem) clamp(0.5rem, 2vw, 1rem);
+    scroll-margin-top: 1.5rem;
   }
 
   .event-head {
@@ -208,6 +225,35 @@
     color: #cccccc;
     font-size: 0.9375rem;
     text-align: left;
+  }
+
+  .event-foot {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .more {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.875rem;
+    color: var(--fg-muted);
+    border-bottom: none;
+    transition: color 0.2s var(--ease);
+  }
+
+  .more-arrow {
+    transition: transform 0.2s var(--ease);
+  }
+
+  .more:hover,
+  .more:focus-visible {
+    color: var(--accent);
+  }
+
+  .more:hover .more-arrow,
+  .more:focus-visible .more-arrow {
+    transform: translateX(0.25rem);
   }
 
   .images {

@@ -65,6 +65,25 @@ async function readImageHead(file: Blob, length = 16): Promise<Uint8Array> {
 	return new Uint8Array(buffer);
 }
 
+/**
+ * Validerer et event-link. Tomme links er tilladt (feltet er valgfrit).
+ * Returnerer en fejlmeddelelse eller null hvis linket er gyldigt.
+ */
+function validateLink(link: string): string | null {
+	if (!link) return null;
+	if (link.length > 2048) return 'The link is too long.';
+	let url: URL;
+	try {
+		url = new URL(link);
+	} catch {
+		return 'The link must be a valid URL (starting with http:// or https://).';
+	}
+	if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+		return 'The link must be a valid URL (starting with http:// or https://).';
+	}
+	return null;
+}
+
 export const actions: Actions = {
 	createEvent: async ({ request, platform, locals }) => {
 		if (!locals.owner) return fail(403, { error: 'Not authorized.' });
@@ -78,10 +97,14 @@ export const actions: Actions = {
 		const eventDate = String(data.get('eventDate') ?? '').trim();
 		const location = String(data.get('location') ?? '').trim();
 		const description = String(data.get('description') ?? '').trim();
+		const link = String(data.get('link') ?? '').trim();
 		const file = data.get('file');
 
 		if (!name) return fail(400, { error: 'Name is required.' });
 		if (name.length > 200) return fail(400, { error: 'The name is too long.' });
+
+		const linkError = validateLink(link);
+		if (linkError) return fail(400, { error: linkError });
 
 		const slug = slugify(name) || `event-${Date.now()}`;
 
@@ -113,7 +136,8 @@ export const actions: Actions = {
 				name,
 				eventDate: eventDate || null,
 				location: location || null,
-				description: description || null
+				description: description || null,
+				link: link || null
 			});
 		} catch (err) {
 			if (err instanceof Error && err.message.includes('UNIQUE')) {
@@ -158,9 +182,13 @@ export const actions: Actions = {
 		const eventDate = String(data.get('eventDate') ?? '').trim();
 		const location = String(data.get('location') ?? '').trim();
 		const description = String(data.get('description') ?? '').trim();
+		const link = String(data.get('link') ?? '').trim();
 
 		if (!name) return fail(400, { error: 'Name is required.' });
 		if (name.length > 200) return fail(400, { error: 'The name is too long.' });
+
+		const linkError = validateLink(link);
+		if (linkError) return fail(400, { error: linkError });
 
 		if (eventDate && !/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
 			return fail(400, { error: 'Date must be in the format YYYY-MM-DD.' });
@@ -177,7 +205,8 @@ export const actions: Actions = {
 				name,
 				eventDate: eventDate || null,
 				location: location || null,
-				description: description || null
+				description: description || null,
+				link: link || null
 			});
 		} catch (err) {
 			if (err instanceof Error && err.message.includes('UNIQUE')) {
