@@ -1,6 +1,13 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { createEvent, listEvents, listEventImages, addEventImage } from '$lib/server/db';
+import {
+	createEvent,
+	listEvents,
+	listEventImages,
+	addEventImage,
+	getEvent,
+	deleteEvent
+} from '$lib/server/db';
 import {
 	buildImageKey,
 	publicImageUrl,
@@ -131,6 +138,48 @@ export const actions: Actions = {
 		} catch (err) {
 			console.error('Kunne ikke uploade billede:', err);
 			return fail(500, { error: 'The event was created, but the image could not be uploaded.' });
+		}
+
+		return { success: true };
+	},
+
+	deleteEvent: async ({ request, platform, locals }) => {
+		if (!locals.owner) return fail(403, { error: 'Not authorized.' });
+
+		const db = platform?.env?.DB;
+		if (!db) return fail(500, { error: 'The database is not configured.' });
+
+		const data = await request.formData();
+		const idRaw = String(data.get('id') ?? '').trim();
+		const id = Number(idRaw);
+		if (!Number.isInteger(id)) return fail(400, { error: 'Invalid event.' });
+
+		const event = await getEvent(db, id);
+		if (!event) return fail(404, { error: 'The event does not exist.' });
+
+		// Slet tilhørende R2-objekter først, så vi ikke efterlader forældreløse filer.
+		const bucket = platform?.env?.Bucket;
+		if (bucket) {
+			let images: Awaited<ReturnType<typeof listEventImages>> = [];
+			try {
+				images = await listEventImages(db, id);
+			} catch (err) {
+				console.error(`Kunne ikke hente billeder for event ${id}:`, err);
+			}
+			if (images.length > 0) {
+				try {
+					await bucket.delete(images.map((img) => img.r2_key));
+				} catch (err) {
+					console.error(`Kunne ikke slette billeder for event ${id}:`, err);
+				}
+			}
+		}
+
+		try {
+			await deleteEvent(db, id);
+		} catch (err) {
+			console.error('Kunne ikke slette event:', err);
+			return fail(500, { error: 'Could not delete the event. Please try again later.' });
 		}
 
 		return { success: true };

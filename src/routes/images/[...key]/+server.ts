@@ -7,13 +7,13 @@ import type { RequestHandler } from './$types';
  */
 export const GET: RequestHandler = async ({ params, platform, request }) => {
 	const bucket = platform?.env?.Bucket;
-	if (!bucket) error(500, 'Lageret er ikke konfigureret.');
+	if (!bucket) error(500, 'Storage is not configured.');
 
 	const key = params.key;
-	if (!key || key.includes('..')) error(400, 'Ugyldig nøgle.');
+	if (!key || key.includes('..')) error(400, 'Invalid key.');
 
 	const object = await bucket.get(key);
-	if (!object) error(404, 'Billedet findes ikke.');
+	if (!object) error(404, 'The image does not exist.');
 
 	const headers = new Headers();
 	if (object.httpMetadata?.contentType) {

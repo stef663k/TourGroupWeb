@@ -30,7 +30,7 @@
   {:else}
     <ul class="events">
       {#each data.events as event (event.id)}
-        <EventCard {event} />
+        <EventCard {event} owner={data.owner} />
       {/each}
     </ul>
   {/if}

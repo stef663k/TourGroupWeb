@@ -2,20 +2,24 @@
   import { enhance } from '$app/forms';
   import { compressImage } from '$lib/image';
 
-  type Field = 'name' | 'years' | 'description' | 'eventDate' | 'location' | 'file';
+  type Field = 'name' | 'years' | 'description' | 'eventDate' | 'location' | 'file' | 'event';
+
+  type EventOption = { id: number; name: string };
 
   let {
     error,
     action = '?/createEvent',
     fields = ['name', 'description', 'eventDate', 'location', 'file'],
     submitLabel = 'Create event',
-    pendingLabel = 'Creating…'
+    pendingLabel = 'Creating…',
+    events = []
   }: {
     error?: string;
     action?: string;
     fields?: Field[];
     submitLabel?: string;
     pendingLabel?: string;
+    events?: EventOption[];
   } = $props();
 
   const show = (field: Field) => fields.includes(field);
@@ -107,6 +111,16 @@
     <input id="years" name="years" type="text" maxlength="50" placeholder="22-24" />
   {/if}
 
+  {#if show('event')}
+    <label for="eventId">Linked event</label>
+    <select id="eventId" name="eventId">
+      <option value="">None</option>
+      {#each events as option (option.id)}
+        <option value={option.id}>{option.name}</option>
+      {/each}
+    </select>
+  {/if}
+
   {#if show('description')}
     <label for="description">Description</label>
     <textarea id="description" name="description" rows="3"></textarea>
@@ -174,7 +188,8 @@
   }
 
   .form input,
-  .form textarea {
+  .form textarea,
+  .form select {
     width: 100%;
     padding: 0.75rem 1rem;
     font-family: inherit;
@@ -187,7 +202,8 @@
   }
 
   .form input:focus,
-  .form textarea:focus {
+  .form textarea:focus,
+  .form select:focus {
     outline: none;
     border-color: var(--accent);
   }

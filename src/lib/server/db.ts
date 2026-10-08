@@ -216,6 +216,36 @@ export async function listSelectedWork(db: D1Database): Promise<SelectedWorkRow[
 }
 
 /**
+ * Slår en selected-work-række op på id. Returnerer null hvis den ikke findes.
+ */
+export async function getSelectedWork(db: D1Database, id: number): Promise<SelectedWorkRow | null> {
+	const row = await db
+		.prepare('SELECT id, name, years, event_id, created_at FROM selected_work WHERE id = ?1')
+		.bind(id)
+		.first<SelectedWorkRow>();
+	return row ?? null;
+}
+
+/**
+ * Opdaterer en selected-work-række og returnerer den opdaterede række.
+ * Returnerer null hvis rækken ikke findes.
+ */
+export async function updateSelectedWork(
+	db: D1Database,
+	id: number,
+	input: { name: string; years?: string | null; eventId?: number | null }
+): Promise<SelectedWorkRow | null> {
+	const result = await db
+		.prepare(
+			'UPDATE selected_work SET name = ?1, years = ?2, event_id = ?3 ' +
+				'WHERE id = ?4 RETURNING id, name, years, event_id, created_at'
+		)
+		.bind(input.name, input.years ?? null, input.eventId ?? null, id)
+		.first<SelectedWorkRow>();
+	return result ?? null;
+}
+
+/**
  * Opretter en selected-work-række og returnerer den.
  */
 export async function createSelectedWork(
