@@ -12,7 +12,11 @@
     fields = ['name', 'description', 'eventDate', 'location', 'file'],
     submitLabel = 'Create event',
     pendingLabel = 'Creating…',
-    events = []
+    events = [],
+    initial = {},
+    id = null,
+    requireImage = true,
+    onSuccess
   }: {
     error?: string;
     action?: string;
@@ -20,6 +24,16 @@
     submitLabel?: string;
     pendingLabel?: string;
     events?: EventOption[];
+    initial?: {
+      name?: string | null;
+      years?: string | null;
+      description?: string | null;
+      eventDate?: string | null;
+      location?: string | null;
+    };
+    id?: number | null;
+    requireImage?: boolean;
+    onSuccess?: () => void;
   } = $props();
 
   const show = (field: Field) => fields.includes(field);
@@ -76,7 +90,13 @@
   // Overskriv fil-feltet med det komprimerede billede lige før submit.
   function onSubmit() {
     submitting = true;
-    return async ({ update }: { update: (opts?: { reset?: boolean }) => Promise<void> }) => {
+    return async ({
+      result,
+      update
+    }: {
+      result: { type: string };
+      update: (opts?: { reset?: boolean }) => Promise<void>;
+    }) => {
       if (compressed && fileInput && fileInput.files?.[0] !== compressed) {
         const dt = new DataTransfer();
         dt.items.add(compressed);
@@ -88,6 +108,7 @@
       previewUrl = null;
       compressed = null;
       note = null;
+      if (result.type === 'success') onSuccess?.();
     };
   }
 
@@ -101,14 +122,25 @@
   class="form"
   use:enhance={onSubmit}
 >
+  {#if id !== null}
+    <input type="hidden" name="id" value={id} />
+  {/if}
+
   {#if show('name')}
     <label for="name">Name</label>
-    <input id="name" name="name" type="text" required maxlength="200" />
+    <input id="name" name="name" type="text" value={initial.name ?? ''} required maxlength="200" />
   {/if}
 
   {#if show('years')}
     <label for="years">Year (e.g. 22-24)</label>
-    <input id="years" name="years" type="text" maxlength="50" placeholder="22-24" />
+    <input
+      id="years"
+      name="years"
+      type="text"
+      value={initial.years ?? ''}
+      maxlength="50"
+      placeholder="22-24"
+    />
   {/if}
 
   {#if show('event')}
@@ -123,17 +155,23 @@
 
   {#if show('description')}
     <label for="description">Description</label>
-    <textarea id="description" name="description" rows="3"></textarea>
+    <textarea id="description" name="description" rows="3">{initial.description ?? ''}</textarea>
   {/if}
 
   {#if show('eventDate')}
     <label for="eventDate">Date</label>
-    <input id="eventDate" name="eventDate" type="date" />
+    <input id="eventDate" name="eventDate" type="date" value={initial.eventDate ?? ''} />
   {/if}
 
   {#if show('location')}
     <label for="location">Location</label>
-    <input id="location" name="location" type="text" maxlength="200" />
+    <input
+      id="location"
+      name="location"
+      type="text"
+      value={initial.location ?? ''}
+      maxlength="200"
+    />
   {/if}
 
   {#if show('file')}
@@ -143,7 +181,7 @@
       name="file"
       type="file"
       accept="image/*"
-      required
+      required={requireImage}
       bind:this={fileInput}
       onchange={onFileChange}
     />

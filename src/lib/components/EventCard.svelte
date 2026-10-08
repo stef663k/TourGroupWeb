@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import EventForm from './EventForm.svelte';
 
   interface EventImage {
     id: number;
@@ -17,6 +18,8 @@
   }
 
   let { event, owner = false }: { event: Event; owner?: boolean } = $props();
+
+  let editing = $state(false);
 
   function formatDate(iso: string | null): string {
     if (!iso) return 'Date to be announced';
@@ -39,6 +42,25 @@
       <span class="location">{event.location}</span>
     {/if}
     {#if owner}
+      <button
+        type="button"
+        class="edit"
+        aria-label="Edit {event.name}"
+        aria-expanded={editing}
+        title="Edit event"
+        onclick={() => (editing = !editing)}
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path
+            d="M4 20h4L19 9a2.12 2.12 0 0 0-3-3L5 17v3zM14 6l3 3"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.75"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </button>
       <form method="POST" action="?/deleteEvent" use:enhance onsubmit={confirmDelete}>
         <input type="hidden" name="id" value={event.id} />
         <button type="submit" class="delete" aria-label="Delete {event.name}" title="Delete event">
@@ -68,6 +90,25 @@
       {/each}
     </ul>
   {/if}
+  {#if owner && editing}
+    <div class="edit-panel">
+      <EventForm
+        action="?/updateEvent"
+        fields={['name', 'description', 'eventDate', 'location']}
+        id={event.id}
+        initial={{
+          name: event.name,
+          description: event.description,
+          eventDate: event.event_date,
+          location: event.location
+        }}
+        submitLabel="Save"
+        pendingLabel="Saving…"
+        onSuccess={() => (editing = false)}
+      />
+      <button type="button" class="cancel" onclick={() => (editing = false)}>Cancel</button>
+    </div>
+  {/if}
 </li>
 
 <style>
@@ -95,6 +136,7 @@
     white-space: nowrap;
   }
 
+  .event-head .edit,
   .event-head .delete {
     display: inline-flex;
     align-items: center;
@@ -110,15 +152,54 @@
     transition: color 0.2s var(--ease), background 0.2s var(--ease);
   }
 
+  .event-head .edit:hover,
+  .event-head .edit:focus-visible {
+    color: var(--accent);
+    background: rgba(255, 255, 255, 0.08);
+  }
+
   .event-head .delete:hover,
   .event-head .delete:focus-visible {
     color: #ff6b6b;
     background: rgba(255, 107, 107, 0.1);
   }
 
+  .event-head .edit svg,
   .event-head .delete svg {
     width: 1.0625rem;
     height: 1.0625rem;
+  }
+
+  .edit-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: clamp(0.75rem, 2vw, 1rem);
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    border-radius: 0.5rem;
+  }
+
+  .edit-panel .cancel {
+    align-self: center;
+    padding: 0.5rem 1.25rem;
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--fg-muted);
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
+  }
+
+  .edit-panel .cancel:hover {
+    color: var(--fg);
+    border-color: var(--fg-muted);
   }
 
   .description {

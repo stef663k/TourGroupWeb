@@ -68,6 +68,27 @@ function createFakeD1() {
 					const [id] = args as [number];
 					return (events.find((e) => e.id === id) ?? null) as T | null;
 				}
+				if (q.startsWith('UPDATE events SET')) {
+					const [slug, name, event_date, location, description, id] = args as [
+						string,
+						string,
+						string | null,
+						string | null,
+						string | null,
+						number
+					];
+					if (events.some((e) => e.slug === slug && e.id !== id)) {
+						throw new Error('UNIQUE constraint failed: events.slug');
+					}
+					const row = events.find((e) => e.id === id);
+					if (!row) return null;
+					row.slug = slug;
+					row.name = name;
+					row.event_date = event_date;
+					row.location = location;
+					row.description = description;
+					return row as T;
+				}
 				if (q.startsWith('INSERT INTO events')) {
 					const [slug, name, event_date, location, description] = args as [
 						string,
@@ -119,6 +140,7 @@ function createFakeD1() {
 
 	return {
 		prepare,
+		_events: events,
 		_images: images,
 		_seed: (rows: typeof events, imageRows: typeof images) => {
 			events.push(...rows);
@@ -171,6 +193,20 @@ async function runDeleteEvent(
 	const action = actions.deleteEvent;
 	const result = await action({
 		request: new Request('http://localhost/events?/deleteEvent', { method: 'POST', body: form }),
+		platform,
+		locals: { owner }
+	} as never);
+	return result as unknown as ActionResult;
+}
+
+async function runUpdateEvent(
+	form: FormData,
+	platform: unknown,
+	owner = true
+): Promise<ActionResult> {
+	const action = actions.updateEvent;
+	const result = await action({
+		request: new Request('http://localhost/events?/updateEvent', { method: 'POST', body: form }),
 		platform,
 		locals: { owner }
 	} as never);
@@ -458,4 +494,135 @@ describe('deleteEvent action', () => {
 		const res = await runDeleteEvent(form, makePlatform(undefined));
 		expect(res.status).toBe(500);
 	});
-});
+	});
+
+	describe('updateEvent action', () => {
+	let errorSpy: ReturnType<typeof vi.spyOn>;
+
+	beforeEach(() => {
+		errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+	});
+
+	afterEach(() => {
+		errorSpy.mockRestore();
+	});
+
+	function seed(db: ReturnType<typeof createFakeD1>) {
+		db._seed(
+			[
+				{
+					id: 1,
+					slug: 'sommerfest',
+					name: 'Sommerfest',
+					event_date: '2026-07-01',
+					location: 'København',
+					description: null,
+					created_at: 0
+				}
+			],
+			[]
+		);
+	}
+
+	it('afviser en ikke-owner', async () => {
+		const form = new FormData();
+		form.set('id', '1');
+		form.set('name', 'Sommerfest');
+		const res = await runUpdateEvent(form, makePlatform(createFakeD1()), false);
+		expect(res.status).toBe(403);
+	});
+
+	it('afviser et ugyldigt id', async () => {
+		const form = new FormData();
+		form.set('id', 'abc');
+		form.set('name', 'Sommerfest');
+		const res = await runUpdateEvent(form, makePlatform(createFakeD1()));
+		expect(res.status).toBe(400);
+	});
+
+	it('kræver et navn', async () => {
+		const db = createFakeD1();
+		seed(db);
+		const form = new FormData();
+		form.set('id', '1');
+		const res = await runUpdateEvent(form, makePlatform(db));
+		expect(res.status).toBe(400);
+	});
+
+	it('afviser en ugyldig dato', async () => {
+		const db = createFakeD1();
+		seed(db);
+		const form = new FormData();
+		form.set('id', '1');
+		form.set('name', 'Sommerfest');
+		form.set('eventDate', '01-07-2026');
+		const res = await runUpdateEvent(form, makePlatform(db));
+		expect(res.status).toBe(400);
+	});
+
+	it('returnerer 404 for et event der ikke findes', async () => {
+		const form = new FormData();
+		form.set('id', '999');
+		form.set('name', 'Sommerfest');
+		const res = await runUpdateEvent(form, makePlatform(createFakeD1()));
+		expect(res.status).toBe(404);
+	});
+
+	it('opdaterer eventets felter', async () => {
+		const db = createFakeD1();
+		seed(db);
+		const form = new FormData();
+		form.set('id', '1');
+		form.set('name', 'Vinterfest');
+		form.set('eventDate', '2026-12-31');
+		form.set('location', 'Aarhus');
+		form.set('description', 'En fest');
+		const res = await runUpdateEvent(form, makePlatform(db));
+		expect(res.success).toBe(true);
+		expect(db._events[0].name).toBe('Vinterfest');
+		expect(db._events[0].slug).toBe('vinterfest');
+		expect(db._events[0].event_date).toBe('2026-12-31');
+		expect(db._events[0].location).toBe('Aarhus');
+		expect(db._events[0].description).toBe('En fest');
+	});
+
+	it('afviser et navn der giver en dublet-slug', async () => {
+		const db = createFakeD1();
+		db._seed(
+			[
+				{
+					id: 1,
+					slug: 'sommerfest',
+					name: 'Sommerfest',
+					event_date: null,
+					location: null,
+					description: null,
+					created_at: 0
+				},
+				{
+					id: 2,
+					slug: 'vinterfest',
+					name: 'Vinterfest',
+					event_date: null,
+					location: null,
+					description: null,
+					created_at: 0
+				}
+			],
+			[]
+		);
+		const form = new FormData();
+		form.set('id', '1');
+		form.set('name', 'Vinterfest');
+		const res = await runUpdateEvent(form, makePlatform(db));
+		expect(res.status).toBe(400);
+	});
+
+	it('fejler når databasen ikke er konfigureret', async () => {
+		const form = new FormData();
+		form.set('id', '1');
+		form.set('name', 'Sommerfest');
+		const res = await runUpdateEvent(form, makePlatform(undefined));
+		expect(res.status).toBe(500);
+	});
+	});

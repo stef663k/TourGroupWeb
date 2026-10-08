@@ -200,7 +200,39 @@ export async function createEvent(
 		.first<EventRow>();
 	if (!result) throw new Error('Could not create event.');
 	return result;
-}
+	}
+
+	/**
+	* Opdaterer et event og returnerer den opdaterede række.
+	* Returnerer null hvis eventet ikke findes. `slug` skal være unik.
+	*/
+	export async function updateEvent(
+	db: D1Database,
+	id: number,
+	input: {
+		slug: string;
+		name: string;
+		eventDate?: string | null;
+		location?: string | null;
+		description?: string | null;
+	}
+	): Promise<EventRow | null> {
+	const result = await db
+		.prepare(
+			'UPDATE events SET slug = ?1, name = ?2, event_date = ?3, location = ?4, description = ?5 ' +
+				'WHERE id = ?6 RETURNING id, slug, name, event_date, location, description, created_at'
+		)
+		.bind(
+			input.slug,
+			input.name,
+			input.eventDate ?? null,
+			input.location ?? null,
+			input.description ?? null,
+			id
+		)
+		.first<EventRow>();
+	return result ?? null;
+	}
 
 /**
  * Henter alle artists sorteret med nyeste først.

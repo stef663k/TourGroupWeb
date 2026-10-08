@@ -6,6 +6,7 @@ import {
 	listEventImages,
 	addEventImage,
 	getEvent,
+	updateEvent,
 	deleteEvent
 } from '$lib/server/db';
 import {
@@ -138,6 +139,52 @@ export const actions: Actions = {
 		} catch (err) {
 			console.error('Kunne ikke uploade billede:', err);
 			return fail(500, { error: 'The event was created, but the image could not be uploaded.' });
+		}
+
+		return { success: true };
+	},
+
+	updateEvent: async ({ request, platform, locals }) => {
+		if (!locals.owner) return fail(403, { error: 'Not authorized.' });
+
+		const db = platform?.env?.DB;
+		if (!db) return fail(500, { error: 'The database is not configured.' });
+
+		const data = await request.formData();
+		const id = Number(String(data.get('id') ?? '').trim());
+		if (!Number.isInteger(id)) return fail(400, { error: 'Invalid event.' });
+
+		const name = String(data.get('name') ?? '').trim();
+		const eventDate = String(data.get('eventDate') ?? '').trim();
+		const location = String(data.get('location') ?? '').trim();
+		const description = String(data.get('description') ?? '').trim();
+
+		if (!name) return fail(400, { error: 'Name is required.' });
+		if (name.length > 200) return fail(400, { error: 'The name is too long.' });
+
+		if (eventDate && !/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
+			return fail(400, { error: 'Date must be in the format YYYY-MM-DD.' });
+		}
+
+		const existing = await getEvent(db, id);
+		if (!existing) return fail(404, { error: 'The event does not exist.' });
+
+		const slug = slugify(name) || existing.slug;
+
+		try {
+			await updateEvent(db, id, {
+				slug,
+				name,
+				eventDate: eventDate || null,
+				location: location || null,
+				description: description || null
+			});
+		} catch (err) {
+			if (err instanceof Error && err.message.includes('UNIQUE')) {
+				return fail(400, { error: 'An event with the same name already exists.' });
+			}
+			console.error('Kunne ikke opdatere event:', err);
+			return fail(500, { error: 'Could not save the event. Please try again later.' });
 		}
 
 		return { success: true };
