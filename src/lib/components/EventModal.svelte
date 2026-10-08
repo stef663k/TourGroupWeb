@@ -243,8 +243,8 @@
   }
 
   .modal {
-    width: 100%;
-    max-width: 32rem;
+    width: 85vw;
+    max-width: 85vw;
     background: var(--bg);
     border: 1px solid var(--line);
     border-radius: 0.75rem;
