@@ -14,7 +14,7 @@
     'Bella Center',
   ];
 
-  function confirmDeleteWork(e: SubmitEvent, name: string) {
+  function confirmDeleteArtist(e: SubmitEvent, name: string) {
     if (!confirm(`Delete “${name}”? This cannot be undone.`)) {
       e.preventDefault();
     }
@@ -43,7 +43,7 @@
 <section>
   <div class="label">01 — Artists</div>
   <ul class="work">
-    {#each data.selectedWork as work (work.id)}
+    {#each data.artists as work (work.id)}
       <li class="work-row">
         {#if work.event_id}
           <a class="work-link" href="/events#event-{work.event_id}">
@@ -82,7 +82,7 @@
               />
             </svg>
           </button>
-          <form method="POST" action="?/deleteWork" use:enhance onsubmit={(e) => confirmDeleteWork(e, work.name)}>
+          <form method="POST" action="?/deleteArtist" use:enhance onsubmit={(e) => confirmDeleteArtist(e, work.name)}>
             <input type="hidden" name="id" value={work.id} />
             <button type="submit" class="icon-btn delete" aria-label="Delete {work.name}" title="Delete">
               <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -101,7 +101,7 @@
       </li>
       {#if data.owner && editingId === work.id}
         <li class="edit-row">
-          <form method="POST" action="?/updateWork" use:enhance={() => async ({ update }) => { await update(); editingId = null; }} class="edit-form">
+          <form method="POST" action="?/updateArtist" use:enhance={() => async ({ update }) => { await update(); editingId = null; }} class="edit-form">
             <input type="hidden" name="id" value={work.id} />
             <label for="edit-name-{work.id}">Name</label>
             <input
@@ -140,11 +140,11 @@
 </section>
 
 {#if data.owner}
-  <!-- 01b — Opret selected work (kun owner) -->
+  <!-- 01b — Opret artist (kun owner) -->
   <section>
-    <div class="label">Create selected work</div>
+    <div class="label">Create artist</div>
     <EventForm
-      action="?/createWork"
+      action="?/createArtist"
       fields={['name', 'years', 'event']}
       events={data.events}
       submitLabel="Add"

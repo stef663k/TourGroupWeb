@@ -184,7 +184,7 @@ section {
   padding-bottom: clamp(2.5rem, 8vw, 6rem);
 }
 
-/* --- Sektionslabel (01 — Selected work) ----- */
+/* --- Sektionslabel (01 — Artists) ----- */
 .label {
   font-size: clamp(0.6875rem, 2vw, 0.75rem);
   letter-spacing: 0.15em;

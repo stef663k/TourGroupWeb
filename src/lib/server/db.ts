@@ -41,7 +41,7 @@ export interface EventWithImages extends EventRow {
 	images: EventImageRow[];
 }
 
-export interface SelectedWorkRow {
+export interface ArtistRow {
 	id: number;
 	name: string;
 	years: string | null;
@@ -203,71 +203,68 @@ export async function createEvent(
 }
 
 /**
- * Henter alle selected-work-rækker sorteret med nyeste først.
+ * Henter alle artists sorteret med nyeste først.
  */
-export async function listSelectedWork(db: D1Database): Promise<SelectedWorkRow[]> {
+export async function listArtists(db: D1Database): Promise<ArtistRow[]> {
 	const result = await db
-		.prepare(
-			'SELECT id, name, years, event_id, created_at FROM selected_work ' +
-				'ORDER BY id DESC'
-		)
-		.all<SelectedWorkRow>();
+		.prepare('SELECT id, name, years, event_id, created_at FROM artists ' + 'ORDER BY id DESC')
+		.all<ArtistRow>();
 	return result.results;
 }
 
 /**
- * Slår en selected-work-række op på id. Returnerer null hvis den ikke findes.
+ * Slår en artist-række op på id. Returnerer null hvis den ikke findes.
  */
-export async function getSelectedWork(db: D1Database, id: number): Promise<SelectedWorkRow | null> {
+export async function getArtist(db: D1Database, id: number): Promise<ArtistRow | null> {
 	const row = await db
-		.prepare('SELECT id, name, years, event_id, created_at FROM selected_work WHERE id = ?1')
+		.prepare('SELECT id, name, years, event_id, created_at FROM artists WHERE id = ?1')
 		.bind(id)
-		.first<SelectedWorkRow>();
+		.first<ArtistRow>();
 	return row ?? null;
 }
 
 /**
- * Opdaterer en selected-work-række og returnerer den opdaterede række.
+ * Opdaterer en artist-række og returnerer den opdaterede række.
  * Returnerer null hvis rækken ikke findes.
  */
-export async function updateSelectedWork(
+export async function updateArtist(
 	db: D1Database,
 	id: number,
 	input: { name: string; years?: string | null; eventId?: number | null }
-): Promise<SelectedWorkRow | null> {
+): Promise<ArtistRow | null> {
 	const result = await db
 		.prepare(
-			'UPDATE selected_work SET name = ?1, years = ?2, event_id = ?3 ' +
+			'UPDATE artists SET name = ?1, years = ?2, event_id = ?3 ' +
 				'WHERE id = ?4 RETURNING id, name, years, event_id, created_at'
 		)
 		.bind(input.name, input.years ?? null, input.eventId ?? null, id)
-		.first<SelectedWorkRow>();
+		.first<ArtistRow>();
 	return result ?? null;
 }
 
 /**
- * Opretter en selected-work-række og returnerer den.
+ * Opretter en artist-række og returnerer den.
  */
-export async function createSelectedWork(
+export async function createArtist(
 	db: D1Database,
 	input: { name: string; years?: string | null; eventId?: number | null }
-): Promise<SelectedWorkRow> {
+): Promise<ArtistRow> {
 	const result = await db
 		.prepare(
-			'INSERT INTO selected_work (name, years, event_id) ' +
+			'INSERT INTO artists (name, years, event_id) ' +
 				'VALUES (?1, ?2, ?3) RETURNING id, name, years, event_id, created_at'
 		)
 		.bind(input.name, input.years ?? null, input.eventId ?? null)
-		.first<SelectedWorkRow>();
-	if (!result) throw new Error('Could not create selected work.');
+		.first<ArtistRow>();
+	if (!result) throw new Error('Could not create artist.');
 	return result;
 }
 
 /**
- * Sletter en selected-work-række.
+ * Sletter en artist-række.
  */
-export async function deleteSelectedWork(db: D1Database, id: number): Promise<void> {
-	await db.prepare('DELETE FROM selected_work WHERE id = ?1').bind(id).run();
+export async function deleteArtist(db: D1Database, id: number): Promise<void> {
+	await db.prepare('DELETE FROM artists WHERE id = ?1').bind(id).run();
 }
 
 /**

@@ -3,8 +3,8 @@ import { load, actions } from './+page.server';
 
 /**
  * Minimal in-memory D1-stub der understøtter de SQL-forespørgsler
- * selected-work-loadet bruger (listSelectedWork + createSelectedWork)
- * samt de event-opslag createWork bruger til at validere event_id.
+ * artist-loadet bruger (listArtists + createArtist)
+ * samt de event-opslag actions bruger til at validere event_id.
  */
 function createFakeD1() {
 	let nextId = 1;
@@ -36,13 +36,13 @@ function createFakeD1() {
 			},
 			async first<T>() {
 				const q = normalized();
-				if (q.startsWith('INSERT INTO selected_work')) {
+				if (q.startsWith('INSERT INTO artists')) {
 					const [name, years, event_id] = args as [string, string | null, number | null];
 					const row = { id: nextId++, name, years, event_id, created_at: 0 };
 					rows.push(row);
 					return row as T;
 				}
-				if (q.startsWith('UPDATE selected_work SET')) {
+				if (q.startsWith('UPDATE artists SET')) {
 					const [name, years, event_id, id] = args as [string, string | null, number | null, number];
 					const row = rows.find((r) => r.id === id);
 					if (!row) return null;
@@ -51,7 +51,7 @@ function createFakeD1() {
 					row.event_id = event_id;
 					return row as T;
 				}
-				if (q.startsWith('SELECT id, name, years, event_id, created_at FROM selected_work WHERE id')) {
+				if (q.startsWith('SELECT id, name, years, event_id, created_at FROM artists WHERE id')) {
 					const [id] = args as [number];
 					return (rows.find((r) => r.id === id) ?? null) as T | null;
 				}
@@ -63,7 +63,7 @@ function createFakeD1() {
 			},
 			async all<T>() {
 				const q = normalized();
-				if (q.startsWith('SELECT id, name, years, event_id, created_at FROM selected_work ORDER BY')) {
+				if (q.startsWith('SELECT id, name, years, event_id, created_at FROM artists ORDER BY')) {
 					return { results: [...rows].sort((a, b) => b.id - a.id) as T[], success: true };
 				}
 				if (q.startsWith('SELECT id, slug, name, event_date, location, description, created_at FROM events ORDER BY')) {
@@ -73,7 +73,7 @@ function createFakeD1() {
 			},
 			async run<T>() {
 				const q = normalized();
-				if (q.startsWith('DELETE FROM selected_work WHERE id')) {
+				if (q.startsWith('DELETE FROM artists WHERE id')) {
 					const [id] = args as [number];
 					const idx = rows.findIndex((r) => r.id === id);
 					if (idx >= 0) rows.splice(idx, 1);
@@ -109,37 +109,37 @@ function makePlatform(db: unknown) {
 
 type ActionResult = { status?: number; error?: string; success?: boolean };
 
-async function runCreateWork(form: FormData, platform: unknown, owner = true): Promise<ActionResult> {
-	const action = actions.createWork;
+async function runCreateArtist(form: FormData, platform: unknown, owner = true): Promise<ActionResult> {
+	const action = actions.createArtist;
 	const result = await action({
-		request: new Request('http://localhost/?/createWork', { method: 'POST', body: form }),
+		request: new Request('http://localhost/?/createArtist', { method: 'POST', body: form }),
 		platform,
 		locals: { owner }
 	} as never);
 	return result as unknown as ActionResult;
 }
 
-async function runDeleteWork(form: FormData, platform: unknown, owner = true): Promise<ActionResult> {
-	const action = actions.deleteWork;
+async function runUpdateArtist(form: FormData, platform: unknown, owner = true): Promise<ActionResult> {
+	const action = actions.updateArtist;
 	const result = await action({
-		request: new Request('http://localhost/?/deleteWork', { method: 'POST', body: form }),
+		request: new Request('http://localhost/?/updateArtist', { method: 'POST', body: form }),
 		platform,
 		locals: { owner }
 	} as never);
 	return result as unknown as ActionResult;
-	}
+}
 
-	async function runUpdateWork(form: FormData, platform: unknown, owner = true): Promise<ActionResult> {
-	const action = actions.updateWork;
+async function runDeleteArtist(form: FormData, platform: unknown, owner = true): Promise<ActionResult> {
+	const action = actions.deleteArtist;
 	const result = await action({
-		request: new Request('http://localhost/?/updateWork', { method: 'POST', body: form }),
+		request: new Request('http://localhost/?/deleteArtist', { method: 'POST', body: form }),
 		platform,
 		locals: { owner }
 	} as never);
 	return result as unknown as ActionResult;
-	}
+}
 
-	type LoadResult = { selectedWork: { id: number; name: string; years: string | null }[] };
+type LoadResult = { artists: { id: number; name: string; years: string | null }[] };
 
 async function runLoad(platform: unknown): Promise<LoadResult> {
 	return (await load({ platform } as never)) as unknown as LoadResult;
@@ -158,26 +158,26 @@ describe('home load', () => {
 
 	it('returnerer tom liste når databasen ikke er konfigureret', async () => {
 		const data = await runLoad(undefined);
-		expect(data.selectedWork).toEqual([]);
+		expect(data.artists).toEqual([]);
 	});
 
 	it('returnerer tom liste når platform.env mangler (ingen 500)', async () => {
 		const data = await runLoad({});
-		expect(data.selectedWork).toEqual([]);
+		expect(data.artists).toEqual([]);
 	});
 
 	it('kaster ikke når databasen fejler (fx manglende tabeller)', async () => {
 		const brokenDb = {
 			prepare() {
-				throw new Error('D1_ERROR: no such table: selected_work');
+				throw new Error('D1_ERROR: no such table: artists');
 			}
 		};
 		const data = await runLoad(makePlatform(brokenDb));
-		expect(data.selectedWork).toEqual([]);
+		expect(data.artists).toEqual([]);
 		expect(errorSpy).toHaveBeenCalled();
 	});
 
-	it('kortlægger selected-work-rækker', async () => {
+	it('kortlægger artist-rækker', async () => {
 		const db = createFakeD1();
 		db._rows.push({
 			id: 1,
@@ -187,12 +187,12 @@ describe('home load', () => {
 			created_at: 0
 		});
 		const data = await runLoad(makePlatform(db));
-		expect(data.selectedWork).toHaveLength(1);
-		expect(data.selectedWork[0].name).toBe('Faustix');
+		expect(data.artists).toHaveLength(1);
+		expect(data.artists[0].name).toBe('Faustix');
 	});
 });
 
-describe('createWork action', () => {
+describe('createArtist action', () => {
 	let errorSpy: ReturnType<typeof vi.spyOn>;
 
 	beforeEach(() => {
@@ -206,27 +206,27 @@ describe('createWork action', () => {
 	it('afviser en ikke-owner', async () => {
 		const form = new FormData();
 		form.set('name', 'Faustix');
-		const res = await runCreateWork(form, makePlatform(createFakeD1()), false);
+		const res = await runCreateArtist(form, makePlatform(createFakeD1()), false);
 		expect(res.status).toBe(403);
 	});
 
 	it('kræver et navn', async () => {
 		const form = new FormData();
-		const res = await runCreateWork(form, makePlatform(createFakeD1()));
+		const res = await runCreateArtist(form, makePlatform(createFakeD1()));
 		expect(res.status).toBe(400);
 	});
 
 	it('afviser et for langt navn', async () => {
 		const form = new FormData();
 		form.set('name', 'a'.repeat(201));
-		const res = await runCreateWork(form, makePlatform(createFakeD1()));
+		const res = await runCreateArtist(form, makePlatform(createFakeD1()));
 		expect(res.status).toBe(400);
 	});
 
 	it('fejler når databasen ikke er konfigureret', async () => {
 		const form = new FormData();
 		form.set('name', 'Faustix');
-		const res = await runCreateWork(form, makePlatform(undefined));
+		const res = await runCreateArtist(form, makePlatform(undefined));
 		expect(res.status).toBe(500);
 	});
 
@@ -234,7 +234,7 @@ describe('createWork action', () => {
 		const db = createFakeD1();
 		const form = new FormData();
 		form.set('name', 'Faustix');
-		const res = await runCreateWork(form, makePlatform(db));
+		const res = await runCreateArtist(form, makePlatform(db));
 		expect(res.success).toBe(true);
 		expect(db._rows).toHaveLength(1);
 		expect(db._rows[0].name).toBe('Faustix');
@@ -246,7 +246,7 @@ describe('createWork action', () => {
 		const form = new FormData();
 		form.set('name', 'Aqua');
 		form.set('years', '24-26');
-		const res = await runCreateWork(form, makePlatform(db));
+		const res = await runCreateArtist(form, makePlatform(db));
 		expect(res.success).toBe(true);
 		expect(db._rows[0].years).toBe('24-26');
 	});
@@ -256,18 +256,18 @@ describe('createWork action', () => {
 		const form = new FormData();
 		form.set('name', 'Katinka');
 		form.set('years', '   ');
-		const res = await runCreateWork(form, makePlatform(db));
+		const res = await runCreateArtist(form, makePlatform(db));
 		expect(res.success).toBe(true);
 		expect(db._rows[0].years).toBeNull();
 	});
 
-	it('knytter selected work til et eksisterende event', async () => {
+	it('knytter en artist til et eksisterende event', async () => {
 		const db = createFakeD1();
 		db._seedEvent({ id: 7, name: 'Sommerfest' });
 		const form = new FormData();
 		form.set('name', 'Faustix');
 		form.set('eventId', '7');
-		const res = await runCreateWork(form, makePlatform(db));
+		const res = await runCreateArtist(form, makePlatform(db));
 		expect(res.success).toBe(true);
 		expect(db._rows[0].event_id).toBe(7);
 	});
@@ -277,7 +277,7 @@ describe('createWork action', () => {
 		const form = new FormData();
 		form.set('name', 'Faustix');
 		form.set('eventId', '');
-		const res = await runCreateWork(form, makePlatform(db));
+		const res = await runCreateArtist(form, makePlatform(db));
 		expect(res.success).toBe(true);
 		expect(db._rows[0].event_id).toBeNull();
 	});
@@ -287,7 +287,7 @@ describe('createWork action', () => {
 		const form = new FormData();
 		form.set('name', 'Faustix');
 		form.set('eventId', '999');
-		const res = await runCreateWork(form, makePlatform(db));
+		const res = await runCreateArtist(form, makePlatform(db));
 		expect(res.status).toBe(400);
 		expect(db._rows).toHaveLength(0);
 	});
@@ -297,13 +297,13 @@ describe('createWork action', () => {
 		const form = new FormData();
 		form.set('name', 'Faustix');
 		form.set('eventId', 'abc');
-		const res = await runCreateWork(form, makePlatform(db));
+		const res = await runCreateArtist(form, makePlatform(db));
 		expect(res.status).toBe(400);
 		expect(db._rows).toHaveLength(0);
 	});
 });
 
-describe('deleteWork action', () => {
+describe('deleteArtist action', () => {
 	let errorSpy: ReturnType<typeof vi.spyOn>;
 
 	beforeEach(() => {
@@ -317,21 +317,21 @@ describe('deleteWork action', () => {
 	it('afviser en ikke-owner', async () => {
 		const form = new FormData();
 		form.set('id', '1');
-		const res = await runDeleteWork(form, makePlatform(createFakeD1()), false);
+		const res = await runDeleteArtist(form, makePlatform(createFakeD1()), false);
 		expect(res.status).toBe(403);
 	});
 
 	it('afviser et ugyldigt id', async () => {
 		const form = new FormData();
 		form.set('id', 'abc');
-		const res = await runDeleteWork(form, makePlatform(createFakeD1()));
+		const res = await runDeleteArtist(form, makePlatform(createFakeD1()));
 		expect(res.status).toBe(400);
 	});
 
 	it('fejler når databasen ikke er konfigureret', async () => {
 		const form = new FormData();
 		form.set('id', '1');
-		const res = await runDeleteWork(form, makePlatform(undefined));
+		const res = await runDeleteArtist(form, makePlatform(undefined));
 		expect(res.status).toBe(500);
 	});
 
@@ -339,18 +339,18 @@ describe('deleteWork action', () => {
 		const db = createFakeD1();
 		const create = new FormData();
 		create.set('name', 'Faustix');
-		await runCreateWork(create, makePlatform(db));
+		await runCreateArtist(create, makePlatform(db));
 		expect(db._rows).toHaveLength(1);
 
 		const form = new FormData();
 		form.set('id', String(db._rows[0].id));
-		const res = await runDeleteWork(form, makePlatform(db));
+		const res = await runDeleteArtist(form, makePlatform(db));
 		expect(res.success).toBe(true);
 		expect(db._rows).toHaveLength(0);
 	});
-	});
+});
 
-	describe('updateWork action', () => {
+describe('updateArtist action', () => {
 	let errorSpy: ReturnType<typeof vi.spyOn>;
 
 	beforeEach(() => {
@@ -361,11 +361,11 @@ describe('deleteWork action', () => {
 		errorSpy.mockRestore();
 	});
 
-	async function seedWork(db: ReturnType<typeof createFakeD1>) {
+	async function seedArtist(db: ReturnType<typeof createFakeD1>) {
 		const create = new FormData();
 		create.set('name', 'Faustix');
 		create.set('years', '22-24');
-		await runCreateWork(create, makePlatform(db));
+		await runCreateArtist(create, makePlatform(db));
 		return db._rows[0].id;
 	}
 
@@ -373,16 +373,16 @@ describe('deleteWork action', () => {
 		const form = new FormData();
 		form.set('id', '1');
 		form.set('name', 'Faustix');
-		const res = await runUpdateWork(form, makePlatform(createFakeD1()), false);
+		const res = await runUpdateArtist(form, makePlatform(createFakeD1()), false);
 		expect(res.status).toBe(403);
 	});
 
 	it('kræver et navn', async () => {
 		const db = createFakeD1();
-		const id = await seedWork(db);
+		const id = await seedArtist(db);
 		const form = new FormData();
 		form.set('id', String(id));
-		const res = await runUpdateWork(form, makePlatform(db));
+		const res = await runUpdateArtist(form, makePlatform(db));
 		expect(res.status).toBe(400);
 	});
 
@@ -390,7 +390,7 @@ describe('deleteWork action', () => {
 		const form = new FormData();
 		form.set('id', 'abc');
 		form.set('name', 'Faustix');
-		const res = await runUpdateWork(form, makePlatform(createFakeD1()));
+		const res = await runUpdateArtist(form, makePlatform(createFakeD1()));
 		expect(res.status).toBe(400);
 	});
 
@@ -398,13 +398,13 @@ describe('deleteWork action', () => {
 		const form = new FormData();
 		form.set('id', '999');
 		form.set('name', 'Faustix');
-		const res = await runUpdateWork(form, makePlatform(createFakeD1()));
+		const res = await runUpdateArtist(form, makePlatform(createFakeD1()));
 		expect(res.status).toBe(404);
 	});
 
 	it('knytter et event til en eksisterende artist', async () => {
 		const db = createFakeD1();
-		const id = await seedWork(db);
+		const id = await seedArtist(db);
 		db._seedEvent({ id: 7, name: 'Sommerfest' });
 
 		const form = new FormData();
@@ -412,53 +412,53 @@ describe('deleteWork action', () => {
 		form.set('name', 'Faustix');
 		form.set('years', '22-24');
 		form.set('eventId', '7');
-		const res = await runUpdateWork(form, makePlatform(db));
+		const res = await runUpdateArtist(form, makePlatform(db));
 		expect(res.success).toBe(true);
 		expect(db._rows[0].event_id).toBe(7);
 	});
 
 	it('fjerner linket når event_id er tomt', async () => {
 		const db = createFakeD1();
-		const id = await seedWork(db);
+		const id = await seedArtist(db);
 		db._seedEvent({ id: 7, name: 'Sommerfest' });
 
 		const link = new FormData();
 		link.set('id', String(id));
 		link.set('name', 'Faustix');
 		link.set('eventId', '7');
-		await runUpdateWork(link, makePlatform(db));
+		await runUpdateArtist(link, makePlatform(db));
 		expect(db._rows[0].event_id).toBe(7);
 
 		const form = new FormData();
 		form.set('id', String(id));
 		form.set('name', 'Faustix');
 		form.set('eventId', '');
-		const res = await runUpdateWork(form, makePlatform(db));
+		const res = await runUpdateArtist(form, makePlatform(db));
 		expect(res.success).toBe(true);
 		expect(db._rows[0].event_id).toBeNull();
 	});
 
 	it('afviser et event_id der ikke findes', async () => {
 		const db = createFakeD1();
-		const id = await seedWork(db);
+		const id = await seedArtist(db);
 		const form = new FormData();
 		form.set('id', String(id));
 		form.set('name', 'Faustix');
 		form.set('eventId', '999');
-		const res = await runUpdateWork(form, makePlatform(db));
+		const res = await runUpdateArtist(form, makePlatform(db));
 		expect(res.status).toBe(400);
 	});
 
 	it('opdaterer navn og år', async () => {
 		const db = createFakeD1();
-		const id = await seedWork(db);
+		const id = await seedArtist(db);
 		const form = new FormData();
 		form.set('id', String(id));
 		form.set('name', 'Aqua');
 		form.set('years', '24-26');
-		const res = await runUpdateWork(form, makePlatform(db));
+		const res = await runUpdateArtist(form, makePlatform(db));
 		expect(res.success).toBe(true);
 		expect(db._rows[0].name).toBe('Aqua');
 		expect(db._rows[0].years).toBe('24-26');
 	});
-	});
+});

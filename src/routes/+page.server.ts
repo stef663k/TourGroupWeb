@@ -1,26 +1,26 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import {
-	createSelectedWork,
-	listSelectedWork,
+	createArtist,
+	listArtists,
 	getEvent,
 	listEvents,
-	getSelectedWork,
-	updateSelectedWork,
-	deleteSelectedWork
+	getArtist,
+	updateArtist,
+	deleteArtist
 } from '$lib/server/db';
 
 export const load: PageServerLoad = async ({ platform }) => {
 	const db = platform?.env?.DB;
-	if (!db) return { selectedWork: [], events: [] };
+	if (!db) return { artists: [], events: [] };
 
 	// Hvis databasen ikke er sat op endnu (fx manglende migrationer), må siden
 	// ikke kaste en 500. Vi logger fejlen og viser en tom liste i stedet.
-	let selectedWork: Awaited<ReturnType<typeof listSelectedWork>> = [];
+	let artists: Awaited<ReturnType<typeof listArtists>> = [];
 	try {
-		selectedWork = await listSelectedWork(db);
+		artists = await listArtists(db);
 	} catch (err) {
-		console.error('Kunne ikke hente selected work:', err);
+		console.error('Kunne ikke hente artists:', err);
 	}
 
 	let events: Awaited<ReturnType<typeof listEvents>> = [];
@@ -30,11 +30,11 @@ export const load: PageServerLoad = async ({ platform }) => {
 		console.error('Kunne ikke hente events:', err);
 	}
 
-	return { selectedWork, events };
+	return { artists, events };
 };
 
 export const actions: Actions = {
-	createWork: async ({ request, platform, locals }) => {
+	createArtist: async ({ request, platform, locals }) => {
 		if (!locals.owner) return fail(403, { error: 'Not authorized.' });
 
 		const db = platform?.env?.DB;
@@ -61,16 +61,16 @@ export const actions: Actions = {
 		}
 
 		try {
-			await createSelectedWork(db, { name, years: years || null, eventId });
+			await createArtist(db, { name, years: years || null, eventId });
 		} catch (err) {
-			console.error('Kunne ikke oprette selected work:', err);
+			console.error('Kunne ikke oprette artist:', err);
 			return fail(500, { error: 'Could not save. Please try again later.' });
 		}
 
 		return { success: true };
-		},
+	},
 
-		updateWork: async ({ request, platform, locals }) => {
+	updateArtist: async ({ request, platform, locals }) => {
 		if (!locals.owner) return fail(403, { error: 'Not authorized.' });
 
 		const db = platform?.env?.DB;
@@ -88,7 +88,7 @@ export const actions: Actions = {
 		if (name.length > 200) return fail(400, { error: 'The name is too long.' });
 		if (years.length > 50) return fail(400, { error: 'The year is too long.' });
 
-		const existing = await getSelectedWork(db, id);
+		const existing = await getArtist(db, id);
 		if (!existing) return fail(404, { error: 'The entry does not exist.' });
 
 		let eventId: number | null = null;
@@ -103,16 +103,16 @@ export const actions: Actions = {
 		}
 
 		try {
-			await updateSelectedWork(db, id, { name, years: years || null, eventId });
+			await updateArtist(db, id, { name, years: years || null, eventId });
 		} catch (err) {
-			console.error('Kunne ikke opdatere selected work:', err);
+			console.error('Kunne ikke opdatere artist:', err);
 			return fail(500, { error: 'Could not save. Please try again later.' });
 		}
 
 		return { success: true };
-		},
+	},
 
-		deleteWork: async ({ request, platform, locals }) => {
+	deleteArtist: async ({ request, platform, locals }) => {
 		if (!locals.owner) return fail(403, { error: 'Not authorized.' });
 
 		const db = platform?.env?.DB;
@@ -123,9 +123,9 @@ export const actions: Actions = {
 		if (!Number.isInteger(id)) return fail(400, { error: 'Invalid entry.' });
 
 		try {
-			await deleteSelectedWork(db, id);
+			await deleteArtist(db, id);
 		} catch (err) {
-			console.error('Kunne ikke slette selected work:', err);
+			console.error('Kunne ikke slette artist:', err);
 			return fail(500, { error: 'Could not delete. Please try again later.' });
 		}
 
