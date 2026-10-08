@@ -37,37 +37,26 @@
 
 <li class="event" id="event-{event.id}">
   <div class="event-head">
-    <time>{formatDate(event.event_date)}</time>
-    <span class="name">{event.name}</span>
-    {#if event.location}
-      <span class="location">{event.location}</span>
-    {/if}
+    <div class="event-info">
+      <time>{formatDate(event.event_date)}</time>
+      <span class="name">{event.name}</span>
+      {#if event.location}
+        <span class="location">{event.location}</span>
+      {/if}
+    </div>
     {#if owner}
-      <button
-        type="button"
-        class="edit"
-        aria-label="Edit {event.name}"
-        aria-expanded={editing}
-        title="Edit event"
-        onclick={() => (editing = !editing)}
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <path
-            d="M4 20h4L19 9a2.12 2.12 0 0 0-3-3L5 17v3zM14 6l3 3"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.75"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
-      </button>
-      <form method="POST" action="?/deleteEvent" use:enhance onsubmit={confirmDelete}>
-        <input type="hidden" name="id" value={event.id} />
-        <button type="submit" class="delete" aria-label="Delete {event.name}" title="Delete event">
+      <div class="event-actions">
+        <button
+          type="button"
+          class="edit"
+          aria-label="Edit {event.name}"
+          aria-expanded={editing}
+          title="Edit event"
+          onclick={() => (editing = !editing)}
+        >
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path
-              d="M3 6h18M8 6V4h8v2m-9 0v14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V6M10 11v6M14 11v6"
+              d="M4 20h4L19 9a2.12 2.12 0 0 0-3-3L5 17v3zM14 6l3 3"
               fill="none"
               stroke="currentColor"
               stroke-width="1.75"
@@ -76,10 +65,25 @@
             />
           </svg>
         </button>
-      </form>
+        <form method="POST" action="?/deleteEvent" use:enhance onsubmit={confirmDelete}>
+          <input type="hidden" name="id" value={event.id} />
+          <button type="submit" class="delete" aria-label="Delete {event.name}" title="Delete event">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path
+                d="M3 6h18M8 6V4h8v2m-9 0v14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V6M10 11v6M14 11v6"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+        </form>
+      </div>
     {/if}
-  </div>
-  {#if event.description}
+    </div>
+    {#if event.description}
     <p class="description">{event.description}</p>
   {/if}
   {#if event.images.length > 0}
@@ -146,11 +150,25 @@
     letter-spacing: 0.02em;
   }
 
+  .event-info {
+    display: flex;
+    align-items: baseline;
+    gap: 1.5rem;
+    min-width: 0;
+  }
+
   .event-head time,
   .event-head .location {
     color: var(--fg-muted);
     font-size: 0.875rem;
     white-space: nowrap;
+  }
+
+  .event-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex: 0 0 auto;
   }
 
   .event-head .edit,
