@@ -7,20 +7,20 @@
 </script>
 
 <svelte:head>
-	<title>Log ind – Tour Group</title>
-	<meta name="description" content="Log ind for at administrere Tour Group." />
+	<title>Log in – Tour Group</title>
+	<meta name="description" content="Log in to manage Tour Group." />
 </svelte:head>
 
 <!-- Hero -->
 <section class="hero">
 	<div class="label">Owner · Login</div>
-	<h1>Log ind</h1>
-	<p class="lead">Log ind for at administrere events.</p>
+	<h1>Log in</h1>
+	<p class="lead">Log in to manage events.</p>
 </section>
 
 <!-- 01 — Adgangskode -->
 <section>
-	<div class="label">01 — Adgangskode</div>
+	<div class="label">01 — Password</div>
 	<form
 		method="POST"
 		use:enhance={() => {
@@ -31,7 +31,7 @@
 			};
 		}}
 	>
-		<label for="password">Adgangskode</label>
+		<label for="password">Password</label>
 		<input
 			id="password"
 			name="password"
@@ -44,7 +44,7 @@
 			<p class="error" role="alert">{form.error}</p>
 		{/if}
 		<button type="submit" disabled={submitting}>
-			{submitting ? 'Logger ind…' : 'Log ind'}
+			{submitting ? 'Logging in…' : 'Log in'}
 		</button>
 	</form>
 </section>

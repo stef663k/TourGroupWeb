@@ -198,7 +198,7 @@ export async function createEvent(
 			input.description ?? null
 		)
 		.first<EventRow>();
-	if (!result) throw new Error('Kunne ikke oprette event.');
+	if (!result) throw new Error('Could not create event.');
 	return result;
 }
 
@@ -229,7 +229,7 @@ export async function createSelectedWork(
 		)
 		.bind(input.name, input.years ?? null, input.eventId ?? null)
 		.first<SelectedWorkRow>();
-	if (!result) throw new Error('Kunne ikke oprette selected work.');
+	if (!result) throw new Error('Could not create selected work.');
 	return result;
 }
 
@@ -275,7 +275,7 @@ export async function addEventImage(
 			input.sortOrder ?? 0
 		)
 		.first<EventImageRow>();
-	if (!result) throw new Error('Kunne ikke tilføje billede.');
+	if (!result) throw new Error('Could not add image.');
 	return result;
 }
 

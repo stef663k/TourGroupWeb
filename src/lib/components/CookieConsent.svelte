@@ -29,14 +29,14 @@
 </script>
 
 {#if visible}
-	<div class="cookie" role="dialog" aria-live="polite" aria-label="Cookie-samtykke">
+	<div class="cookie" role="dialog" aria-live="polite" aria-label="Cookie consent">
 		<p>
-			Vi bruger cookies til at forbedre din oplevelse på vores website. Ved at klikke
-			”Accepter” samtykker du til, at vi bruger cookies.
+			We use cookies to improve your experience on our website. By clicking
+			“Accept” you consent to our use of cookies.
 		</p>
 		<div class="actions">
-			<button class="reject" onclick={() => decide('rejected')}>Afvis</button>
-			<button class="accept" onclick={() => decide('accepted')}>Accepter</button>
+			<button class="reject" onclick={() => decide('rejected')}>Reject</button>
+			<button class="accept" onclick={() => decide('accepted')}>Accept</button>
 		</div>
 	</div>
 {/if}

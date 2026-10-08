@@ -2,28 +2,28 @@
 </script>
 
 <svelte:head>
-	<title>Om – Tour Group</title>
-	<meta name="description" content="Om Tour Group" />
+	<title>About – Tour Group</title>
+	<meta name="description" content="About Tour Group" />
 </svelte:head>
 
 <!-- Hero -->
 <section class="hero">
-	<div class="label">Om · Denmark</div>
-	<h1>Om os</h1>
-	<p class="lead">Kommer snart</p>
-</section>
+	<div class="label">About · Denmark</div>
+	<h1>About us</h1>
+	<p class="lead">Coming soon</p>
+	</section>
 
-<!-- 01 — Hvem er vi -->
-<section>
-	<div class="label">01 — Hvem er vi</div>
-	<p class="lead">Kommer snart</p>
-</section>
+	<!-- 01 — Hvem er vi -->
+	<section>
+	<div class="label">01 — Who we are</div>
+	<p class="lead">Coming soon</p>
+	</section>
 
-<!-- 02 — Samarbejde -->
-<section>
-	<div class="label">02 — Samarbejde</div>
-	<p class="lead">Kommer snart</p>
-</section>
+	<!-- 02 — Samarbejde -->
+	<section>
+	<div class="label">02 — Collaboration</div>
+	<p class="lead">Coming soon</p>
+	</section>
 
 <style>
 	.lead {

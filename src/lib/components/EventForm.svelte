@@ -8,8 +8,8 @@
     error,
     action = '?/createEvent',
     fields = ['name', 'description', 'eventDate', 'location', 'file'],
-    submitLabel = 'Opret event',
-    pendingLabel = 'Opretter…'
+    submitLabel = 'Create event',
+    pendingLabel = 'Creating…'
   }: {
     error?: string;
     action?: string;
@@ -43,14 +43,14 @@
       compressed = result;
       previewUrl = URL.createObjectURL(result);
       if (result.size < file.size) {
-        note = `Komprimeret fra ${formatSize(file.size)} til ${formatSize(result.size)}.`;
+        note = `Compressed from ${formatSize(file.size)} to ${formatSize(result.size)}.`;
       }
     } catch {
       // Kunne ikke komprimere (fx HEIC uden decoder i browseren).
       // Behold originalen og lad serveren give en klar fejl hvis den afvises.
       compressed = file;
       previewUrl = URL.createObjectURL(file);
-      note = 'Kunne ikke komprimere billedet — sender originalen.';
+      note = 'Could not compress the image — uploading the original.';
     } finally {
       compressing = false;
     }
@@ -98,32 +98,32 @@
   use:enhance={onSubmit}
 >
   {#if show('name')}
-    <label for="name">Navn</label>
+    <label for="name">Name</label>
     <input id="name" name="name" type="text" required maxlength="200" />
   {/if}
 
   {#if show('years')}
-    <label for="years">År (fx 22-24)</label>
+    <label for="years">Year (e.g. 22-24)</label>
     <input id="years" name="years" type="text" maxlength="50" placeholder="22-24" />
   {/if}
 
   {#if show('description')}
-    <label for="description">Beskrivelse</label>
+    <label for="description">Description</label>
     <textarea id="description" name="description" rows="3"></textarea>
   {/if}
 
   {#if show('eventDate')}
-    <label for="eventDate">Dato</label>
+    <label for="eventDate">Date</label>
     <input id="eventDate" name="eventDate" type="date" />
   {/if}
 
   {#if show('location')}
-    <label for="location">Sted</label>
+    <label for="location">Location</label>
     <input id="location" name="location" type="text" maxlength="200" />
   {/if}
 
   {#if show('file')}
-    <label for="file">Billede (JPEG, PNG, WebP, GIF eller AVIF)</label>
+    <label for="file">Image (JPEG, PNG, WebP, GIF or AVIF)</label>
     <input
       id="file"
       name="file"
@@ -135,13 +135,13 @@
     />
 
     {#if compressing}
-      <p class="note">Komprimerer billede…</p>
+      <p class="note">Compressing image…</p>
     {:else if note}
       <p class="note">{note}</p>
     {/if}
 
     {#if previewUrl}
-      <img class="preview" src={previewUrl} alt="Forhåndsvisning af valgt billede" />
+      <img class="preview" src={previewUrl} alt="Selected upload preview" />
     {/if}
   {/if}
 

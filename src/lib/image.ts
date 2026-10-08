@@ -46,7 +46,7 @@ export async function compressImage(
 		canvas.height = height;
 
 		const ctx = canvas.getContext('2d');
-		if (!ctx) throw new Error('Kunne ikke oprette canvas-kontekst.');
+		if (!ctx) throw new Error('Could not create canvas context.');
 
 		ctx.drawImage(bitmap, 0, 0, width, height);
 
@@ -67,7 +67,7 @@ async function decode(file: File): Promise<ImageBitmap> {
 	try {
 		return await createImageBitmap(file);
 	} catch {
-		throw new Error('Billedet kunne ikke læses i browseren (måske HEIC).');
+		throw new Error('The image could not be read in the browser (possibly HEIC).');
 	}
 }
 

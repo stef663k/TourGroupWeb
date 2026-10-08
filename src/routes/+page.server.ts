@@ -19,24 +19,24 @@ export const load: PageServerLoad = async ({ platform }) => {
 
 export const actions: Actions = {
 	createWork: async ({ request, platform, locals }) => {
-		if (!locals.owner) return fail(403, { error: 'Ikke autoriseret.' });
+		if (!locals.owner) return fail(403, { error: 'Not authorized.' });
 
 		const db = platform?.env?.DB;
-		if (!db) return fail(500, { error: 'Databasen er ikke konfigureret.' });
+		if (!db) return fail(500, { error: 'The database is not configured.' });
 
 		const data = await request.formData();
 		const name = String(data.get('name') ?? '').trim();
 		const years = String(data.get('years') ?? '').trim();
 
-		if (!name) return fail(400, { error: 'Navn er påkrævet.' });
-		if (name.length > 200) return fail(400, { error: 'Navnet er for langt.' });
-		if (years.length > 50) return fail(400, { error: 'Årstallet er for langt.' });
+		if (!name) return fail(400, { error: 'Name is required.' });
+		if (name.length > 200) return fail(400, { error: 'The name is too long.' });
+		if (years.length > 50) return fail(400, { error: 'The year is too long.' });
 
 		try {
 			await createSelectedWork(db, { name, years: years || null });
 		} catch (err) {
 			console.error('Kunne ikke oprette selected work:', err);
-			return fail(500, { error: 'Kunne ikke gemme. Prøv igen senere.' });
+			return fail(500, { error: 'Could not save. Please try again later.' });
 		}
 
 		return { success: true };

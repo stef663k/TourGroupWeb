@@ -59,11 +59,11 @@ async function readImageHead(file: Blob, length = 16): Promise<Uint8Array> {
 
 export const actions: Actions = {
 	createEvent: async ({ request, platform, locals }) => {
-		if (!locals.owner) return fail(403, { error: 'Ikke autoriseret.' });
+		if (!locals.owner) return fail(403, { error: 'Not authorized.' });
 
 		const db = platform?.env?.DB;
 		const bucket = platform?.env?.Bucket;
-		if (!db) return fail(500, { error: 'Databasen er ikke konfigureret.' });
+		if (!db) return fail(500, { error: 'The database is not configured.' });
 
 		const data = await request.formData();
 		const name = String(data.get('name') ?? '').trim();
@@ -72,22 +72,22 @@ export const actions: Actions = {
 		const description = String(data.get('description') ?? '').trim();
 		const file = data.get('file');
 
-		if (!name) return fail(400, { error: 'Navn er påkrævet.' });
-		if (name.length > 200) return fail(400, { error: 'Navnet er for langt.' });
+		if (!name) return fail(400, { error: 'Name is required.' });
+		if (name.length > 200) return fail(400, { error: 'The name is too long.' });
 
 		const slug = slugify(name) || `event-${Date.now()}`;
 
 		if (eventDate && !/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
-			return fail(400, { error: 'Dato skal være i formatet ÅÅÅÅ-MM-DD.' });
+			return fail(400, { error: 'Date must be in the format YYYY-MM-DD.' });
 		}
 
 		if (!(file instanceof File) || file.size === 0) {
-			return fail(400, { error: 'Vælg et billede.' });
+			return fail(400, { error: 'Choose an image.' });
 		}
-		if (!bucket) return fail(500, { error: 'Lageret er ikke konfigureret.' });
+		if (!bucket) return fail(500, { error: 'Storage is not configured.' });
 
 		if (file.size > MAX_IMAGE_BYTES) {
-			return fail(400, { error: 'Filen er for stor (maks 8 MB).' });
+			return fail(400, { error: 'The file is too large (max 8 MB).' });
 		}
 
 		const head = await readImageHead(file);
@@ -109,10 +109,10 @@ export const actions: Actions = {
 			});
 		} catch (err) {
 			if (err instanceof Error && err.message.includes('UNIQUE')) {
-				return fail(400, { error: 'Der findes allerede et event med samme navn.' });
+				return fail(400, { error: 'An event with the same name already exists.' });
 			}
 			console.error('Kunne ikke oprette event:', err);
-			return fail(500, { error: 'Kunne ikke oprette event. Prøv igen senere.' });
+			return fail(500, { error: 'Could not create the event. Please try again later.' });
 		}
 
 		const key = buildImageKey(created.slug, validation.contentType, crypto.randomUUID());
@@ -130,7 +130,7 @@ export const actions: Actions = {
 			});
 		} catch (err) {
 			console.error('Kunne ikke uploade billede:', err);
-			return fail(500, { error: 'Eventet blev oprettet, men billedet kunne ikke uploades.' });
+			return fail(500, { error: 'The event was created, but the image could not be uploaded.' });
 		}
 
 		return { success: true };

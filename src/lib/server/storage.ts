@@ -119,15 +119,15 @@ export function validateImage(input: {
 	size: number;
 	head: Uint8Array;
 }): { ok: true; contentType: string } | { ok: false; error: string } {
-	if (input.size <= 0) return { ok: false, error: 'Filen er tom.' };
-	if (input.size > MAX_IMAGE_BYTES) return { ok: false, error: 'Filen er for stor (maks 8 MB).' };
+	if (input.size <= 0) return { ok: false, error: 'The file is empty.' };
+	if (input.size > MAX_IMAGE_BYTES) return { ok: false, error: 'The file is too large (max 8 MB).' };
 
 	const declared = input.contentType.toLowerCase();
-	if (!imageExtension(declared)) return { ok: false, error: 'Filtypen understøttes ikke.' };
+	if (!imageExtension(declared)) return { ok: false, error: 'The file type is not supported.' };
 
 	const sniffed = sniffImageType(input.head);
-	if (!sniffed) return { ok: false, error: 'Filen er ikke et gyldigt billede.' };
-	if (sniffed !== declared) return { ok: false, error: 'Filens indhold matcher ikke filtypen.' };
+	if (!sniffed) return { ok: false, error: 'The file is not a valid image.' };
+	if (sniffed !== declared) return { ok: false, error: "The file's contents do not match the file type." };
 
 	return { ok: true, contentType: sniffed };
 }

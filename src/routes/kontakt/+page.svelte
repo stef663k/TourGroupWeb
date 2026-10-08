@@ -2,28 +2,28 @@
 </script>
 
 <svelte:head>
-	<title>Kontakt – Tour Group</title>
-	<meta name="description" content="Kontakt Tour Group" />
+	<title>Contact – Tour Group</title>
+	<meta name="description" content="Contact Tour Group" />
 </svelte:head>
 
 <!-- Hero -->
 <section class="hero">
-	<div class="label">Kontakt · Denmark</div>
-	<h1>Kontakt</h1>
-	<p class="lead">Kommer snart</p>
-</section>
+	<div class="label">Contact · Denmark</div>
+	<h1>Contact</h1>
+	<p class="lead">Coming soon</p>
+	</section>
 
-<!-- 01 — Kontakt os -->
-<section>
-	<div class="label">01 — Kontakt os</div>
-	<p class="lead">Kommer snart</p>
-</section>
+	<!-- 01 — Kontakt os -->
+	<section>
+	<div class="label">01 — Contact us</div>
+	<p class="lead">Coming soon</p>
+	</section>
 
-<!-- 02 — Følg os -->
-<section>
-	<div class="label">02 — Følg os</div>
-	<p class="lead">Kommer snart</p>
-</section>
+	<!-- 02 — Følg os -->
+	<section>
+	<div class="label">02 — Follow us</div>
+	<p class="lead">Coming soon</p>
+	</section>
 
 <style>
 	.lead {

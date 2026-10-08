@@ -16,31 +16,31 @@ export const actions: Actions = {
 		const password = String(data.get('password') ?? '');
 
 		if (!password) {
-			return fail(400, { error: 'Indtast venligst en adgangskode.' });
+			return fail(400, { error: 'Please enter a password.' });
 		}
 
 		const db = platform?.env?.DB;
 		if (!db) {
-			return fail(500, { error: 'Login er ikke konfigureret korrekt på serveren.' });
-		}
+			return fail(500, { error: 'Login is not configured correctly on the server.' });
+			}
 
-		let ok: boolean;
-		try {
+			let ok: boolean;
+			try {
 			ok = await verifyOwnerPassword(db, password);
-		} catch (err) {
+			} catch (err) {
 			console.error('Login fejlede:', err);
-			return fail(500, { error: 'Login er ikke konfigureret korrekt på serveren.' });
-		}
-		if (!ok) {
-			return fail(400, { error: 'Forkert adgangskode.' });
-		}
+			return fail(500, { error: 'Login is not configured correctly on the server.' });
+			}
+			if (!ok) {
+			return fail(400, { error: 'Incorrect password.' });
+			}
 
 		let sessionId: string;
 		try {
 			sessionId = await createSession(db, SESSION_TTL_SECONDS);
 		} catch (err) {
 			console.error('Kunne ikke oprette session:', err);
-			return fail(500, { error: 'Kunne ikke logge ind. Prøv igen senere.' });
+			return fail(500, { error: 'Could not log in. Please try again later.' });
 		}
 
 		cookies.set(SESSION_COOKIE_NAME, sessionId, {

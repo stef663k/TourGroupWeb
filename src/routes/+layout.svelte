@@ -10,17 +10,17 @@
 <nav>
 	<a href="/">Tour Group</a>
 	<ul>
-		<li><a href="/">Hjem</a></li>
+		<li><a href="/">Home</a></li>
 		<li><a href="/events">Events</a></li>
-		<li><a href="/om">Om</a></li>
-		<li><a href="/kontakt">Kontakt</a></li>
+		<li><a href="/om">About</a></li>
+		<li><a href="/kontakt">Contact</a></li>
 		<li>
 			{#if data.owner}
 				<form method="POST" action="/logout">
-					<button type="submit">Log ud</button>
+					<button type="submit">Log out</button>
 				</form>
 			{:else}
-				<a href="/login">Log ind</a>
+				<a href="/login">Log in</a>
 			{/if}
 		</li>
 	</ul>

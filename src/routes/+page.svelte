@@ -16,19 +16,19 @@
 
 <svelte:head>
   <title>Tour Group</title>
-  <meta name="description" content="Tour Group — lysdesign og lysproduktion til events." />
+  <meta name="description" content="Tour Group — lighting design and production for events." />
 </svelte:head>
 
 <!-- Hero -->
 <section class="hero">
-  <div class="label">Lys til events · Denmark</div>
+  <div class="label">Lighting for events · Denmark</div>
   <h1>Tour Group</h1>
-  <p class="lead">Kommer snart</p>
+  <p class="lead">Coming soon</p>
 </section>
 
 <!-- 01 — Selected work -->
 <section>
-  <div class="label">01 — Selected work</div>
+  <div class="label">01 — Artists</div>
   <ul class="work">
     {#each data.selectedWork as work (work.id)}
       <li>
@@ -57,12 +57,12 @@
 {#if data.owner}
   <!-- 01b — Opret selected work (kun owner) -->
   <section>
-    <div class="label">Opret selected work</div>
+    <div class="label">Create selected work</div>
     <EventForm
       action="?/createWork"
       fields={['name', 'years']}
-      submitLabel="Tilføj"
-      pendingLabel="Tilføjer…"
+      submitLabel="Add"
+      pendingLabel="Adding…"
       error={form?.error}
     />
   </section>
@@ -70,7 +70,7 @@
 
 <!-- 02 — Samarbejde med virksomheder -->
 <section>
-  <div class="label">02 — Samarbejde med virksomheder</div>
+  <div class="label">02 — Working with companies</div>
   <ul class="partners">
     {#each partnere as partner}
       <li>{partner}</li>

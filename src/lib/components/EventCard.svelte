@@ -17,7 +17,7 @@
   let { event }: { event: Event } = $props();
 
   function formatDate(iso: string | null): string {
-    if (!iso) return 'Dato kommer';
+    if (!iso) return 'Date to be announced';
     const [y, m, d] = iso.split('-');
     return `${d}.${m}.${y}`;
   }
