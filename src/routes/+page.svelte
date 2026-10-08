@@ -39,9 +39,9 @@
   <p class="lead">Coming soon</p>
 </section>
 
-<!-- 01 — Selected work -->
+<!-- 01 — Artists -->
 <section>
-  <div class="label">01 — Selected work</div>
+  <div class="label">01 — Artists</div>
   <ul class="work">
     {#each data.selectedWork as work (work.id)}
       <li class="work-row">
