@@ -86,18 +86,22 @@
       </div>
     {/if}
     </div>
-    {#if event.description}
-    <p class="description">{event.description}</p>
-  {/if}
-  {#if event.images.length > 0}
-    <ul class="images">
-      {#each event.images as image (image.id)}
-        <li>
-          <img src={image.url} alt={image.caption ?? event.name} loading="lazy" />
-        </li>
-      {/each}
-    </ul>
-  {/if}
+    {#if event.images.length > 0 || event.description}
+      <div class="event-body">
+        {#if event.images.length > 0}
+          <ul class="images">
+            {#each event.images as image (image.id)}
+              <li>
+                <img src={image.url} alt={image.caption ?? event.name} loading="lazy" />
+              </li>
+            {/each}
+          </ul>
+        {/if}
+        {#if event.description}
+          <p class="description">{event.description}</p>
+        {/if}
+      </div>
+    {/if}
   <div class="event-foot">
     <button
       type="button"
@@ -242,7 +246,21 @@
     border-color: var(--fg-muted);
   }
 
+  .event-body {
+    display: flex;
+    align-items: flex-start;
+    gap: clamp(0.75rem, 2vw, 1.5rem);
+  }
+
+  .event-body .images {
+    flex: 0 0 auto;
+    width: clamp(6rem, 22vw, 12rem);
+    grid-template-columns: repeat(auto-fill, minmax(4rem, 1fr));
+  }
+
   .description {
+    flex: 1 1 auto;
+    min-width: 0;
     max-width: none;
     margin-bottom: 0;
     color: #cccccc;
@@ -289,6 +307,8 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
     gap: 0.5rem;
+    margin: 0;
+    padding: 0;
   }
 
   .images img {
