@@ -13,7 +13,7 @@
 
 <!-- Hero -->
 <section class="hero">
-  <div class="label">Events · Denmark</div>
+  <div class="label">Events</div>
   <h1>Events</h1>
   {#if data.events.length === 0}
     <p class="lead">No events right now — check back soon.</p>

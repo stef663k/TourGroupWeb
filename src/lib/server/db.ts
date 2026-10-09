@@ -51,6 +51,16 @@ export interface ArtistRow {
 	created_at: number;
 }
 
+/** Der er kun én about-række, og den har altid id = 1. */
+export const ABOUT_ID = 1;
+
+export interface AboutRow {
+	id: number;
+	about_me: string | null;
+	what_i_can_do: string | null;
+	updated_at: number;
+}
+
 /**
  * Slår owner-rækken op. Returnerer null hvis den ikke findes.
  */
@@ -400,4 +410,36 @@ export async function removeEventImage(
 	if (!row) return null;
 	await db.prepare('DELETE FROM event_images WHERE id = ?1').bind(id).run();
 	return row;
+}
+
+/**
+ * Slår about-rækken op (id = 1). Returnerer null hvis den ikke findes.
+ * Bemærk at migrationen seeder rækken, så den normalt altid findes.
+ */
+export async function getAbout(db: D1Database): Promise<AboutRow | null> {
+	const row = await db
+		.prepare('SELECT id, about_me, what_i_can_do, updated_at FROM about WHERE id = ?1')
+		.bind(ABOUT_ID)
+		.first<AboutRow>();
+	return row ?? null;
+}
+
+/**
+ * Opdaterer about-rækken. Opretter rækken hvis den mangler, så opslag
+ * aldrig fejler på en tom tabel.
+ */
+export async function updateAbout(
+	db: D1Database,
+	input: { aboutMe?: string | null; whatICanDo?: string | null }
+): Promise<AboutRow> {
+	const result = await db
+		.prepare(
+			'INSERT INTO about (id, about_me, what_i_can_do, updated_at) VALUES (?1, ?2, ?3, unixepoch()) ' +
+				'ON CONFLICT (id) DO UPDATE SET about_me = excluded.about_me, what_i_can_do = excluded.what_i_can_do, updated_at = unixepoch() ' +
+				'RETURNING id, about_me, what_i_can_do, updated_at'
+		)
+		.bind(ABOUT_ID, input.aboutMe ?? null, input.whatICanDo ?? null)
+		.first<AboutRow>();
+	if (!result) throw new Error('Could not update about content.');
+	return result;
 }

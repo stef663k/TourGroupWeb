@@ -34,7 +34,7 @@
 
 <!-- Hero -->
 <section class="hero">
-  <div class="label">Lighting for events · Denmark</div>
+  <div class="label">Lighting for events</div>
   <h1>Tour Group</h1>
   <p class="lead">Coming soon</p>
 </section>
