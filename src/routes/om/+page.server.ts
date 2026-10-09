@@ -32,21 +32,29 @@ export const actions: Actions = {
 		if (!db) return fail(500, { error: 'The database is not configured.' });
 
 		const data = await request.formData();
-		const aboutMe = String(data.get('aboutMe') ?? '').trim();
-		const whatICanDo = String(data.get('whatICanDo') ?? '').trim();
 
-		if (aboutMe.length > MAX_LENGTH) {
-			return fail(400, { error: 'The “About me” text is too long.' });
+		// Kun felter der faktisk er sendt med, opdateres. Det gør det muligt at
+		// have en separat formular under hver sektion uden at overskrive den anden.
+		const input: { aboutMe?: string | null; whatICanDo?: string | null } = {};
+
+		if (data.has('aboutMe')) {
+			const aboutMe = String(data.get('aboutMe') ?? '').trim();
+			if (aboutMe.length > MAX_LENGTH) {
+				return fail(400, { error: 'The “About me” text is too long.' });
+			}
+			input.aboutMe = aboutMe || null;
 		}
-		if (whatICanDo.length > MAX_LENGTH) {
-			return fail(400, { error: 'The “What I can do” text is too long.' });
+
+		if (data.has('whatICanDo')) {
+			const whatICanDo = String(data.get('whatICanDo') ?? '').trim();
+			if (whatICanDo.length > MAX_LENGTH) {
+				return fail(400, { error: 'The “What I can do” text is too long.' });
+			}
+			input.whatICanDo = whatICanDo || null;
 		}
 
 		try {
-			await updateAbout(db, {
-				aboutMe: aboutMe || null,
-				whatICanDo: whatICanDo || null
-			});
+			await updateAbout(db, input);
 		} catch (err) {
 			console.error('Kunne ikke opdatere about-indhold:', err);
 			return fail(500, { error: 'Could not save. Please try again later.' });

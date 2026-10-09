@@ -28,16 +28,19 @@ function createFakeD1() {
 					return (rows.find((r) => r.id === id) ?? null) as T | null;
 				}
 				if (q.startsWith('INSERT INTO about')) {
-					const [id, about_me, what_i_can_do] = args as [number, string | null, string | null];
+					// Parse kolonnelisten så vi kan understøtte delvise opdateringer.
+					const columns = q.slice(q.indexOf('(') + 1, q.indexOf(')')).split(',').map((c) => c.trim());
+					const values = args as (number | string | null)[];
+					const provided: Record<string, number | string | null> = {};
+					columns.forEach((col, i) => (provided[col] = values[i]));
+
+					const id = provided.id as number;
 					const existing = rows.find((r) => r.id === id);
-					if (existing) {
-						existing.about_me = about_me;
-						existing.what_i_can_do = what_i_can_do;
-						existing.updated_at = 1;
-						return existing as T;
-					}
-					const row = { id, about_me, what_i_can_do, updated_at: 1 };
-					rows.push(row);
+					const row = existing ?? { id, about_me: null, what_i_can_do: null, updated_at: 1 };
+					if ('about_me' in provided) row.about_me = provided.about_me as string | null;
+					if ('what_i_can_do' in provided) row.what_i_can_do = provided.what_i_can_do as string | null;
+					row.updated_at = 1;
+					if (!existing) rows.push(row);
 					return row as T;
 				}
 				throw new Error(`Unsupported SQL: ${q}`);
@@ -187,4 +190,31 @@ describe('updateAbout action', () => {
 		const res = await runUpdateAbout(form, makePlatform(db));
 		expect(res.status).toBe(400);
 	});
-});
+
+	it('opdaterer kun den sektion der sendes med', async () => {
+		const db = createFakeD1();
+		db._seed({ id: 1, about_me: 'Gammel om mig', what_i_can_do: 'Gammel kan' });
+
+		const form = new FormData();
+		form.set('aboutMe', 'Ny om mig');
+
+		const res = await runUpdateAbout(form, makePlatform(db));
+		expect(res.success).toBe(true);
+		expect(db._rows[0].about_me).toBe('Ny om mig');
+		// Den anden sektion må ikke røres.
+		expect(db._rows[0].what_i_can_do).toBe('Gammel kan');
+	});
+
+	it('kan rydde en enkelt sektion uden at påvirke den anden', async () => {
+		const db = createFakeD1();
+		db._seed({ id: 1, about_me: 'Gammel om mig', what_i_can_do: 'Gammel kan' });
+
+		const form = new FormData();
+		form.set('whatICanDo', '');
+
+		const res = await runUpdateAbout(form, makePlatform(db));
+		expect(res.success).toBe(true);
+		expect(db._rows[0].what_i_can_do).toBeNull();
+		expect(db._rows[0].about_me).toBe('Gammel om mig');
+	});
+	});

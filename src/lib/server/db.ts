@@ -426,19 +426,37 @@ export async function getAbout(db: D1Database): Promise<AboutRow | null> {
 
 /**
  * Opdaterer about-rækken. Opretter rækken hvis den mangler, så opslag
- * aldrig fejler på en tom tabel.
+ * aldrig fejler på en tom tabel. Felter der ikke er angivet (undefined),
+ * bevares — så hver sektion kan opdateres uafhængigt af den anden.
  */
 export async function updateAbout(
 	db: D1Database,
 	input: { aboutMe?: string | null; whatICanDo?: string | null }
 ): Promise<AboutRow> {
+	const columns: string[] = ['id'];
+	const values: (string | number | null)[] = [ABOUT_ID];
+	const updates: string[] = ['updated_at = unixepoch()'];
+
+	if (input.aboutMe !== undefined) {
+		columns.push('about_me');
+		values.push(input.aboutMe);
+		updates.push('about_me = excluded.about_me');
+	}
+	if (input.whatICanDo !== undefined) {
+		columns.push('what_i_can_do');
+		values.push(input.whatICanDo);
+		updates.push('what_i_can_do = excluded.what_i_can_do');
+	}
+
+	const placeholders = columns.map((_, i) => `?${i + 1}`).join(', ');
+
 	const result = await db
 		.prepare(
-			'INSERT INTO about (id, about_me, what_i_can_do, updated_at) VALUES (?1, ?2, ?3, unixepoch()) ' +
-				'ON CONFLICT (id) DO UPDATE SET about_me = excluded.about_me, what_i_can_do = excluded.what_i_can_do, updated_at = unixepoch() ' +
+			`INSERT INTO about (${columns.join(', ')}) VALUES (${placeholders}) ` +
+				`ON CONFLICT (id) DO UPDATE SET ${updates.join(', ')} ` +
 				'RETURNING id, about_me, what_i_can_do, updated_at'
 		)
-		.bind(ABOUT_ID, input.aboutMe ?? null, input.whatICanDo ?? null)
+		.bind(...values)
 		.first<AboutRow>();
 	if (!result) throw new Error('Could not update about content.');
 	return result;

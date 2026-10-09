@@ -4,12 +4,16 @@
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
-  let editing = $state(false);
+  let editing = $state<null | 'aboutMe' | 'whatICanDo'>(null);
 
   function onSubmit() {
     return async ({ result }: { result: { type: string } }) => {
-      if (result.type === 'success') editing = false;
+      if (result.type === 'success') editing = null;
     };
+  }
+
+  function toggle(section: 'aboutMe' | 'whatICanDo') {
+    editing = editing === section ? null : section;
   }
 </script>
 
@@ -33,6 +37,30 @@
   {:else}
     <p class="lead">Coming soon</p>
   {/if}
+
+  {#if data.owner}
+    <div class="editor">
+      {#if editing === 'aboutMe'}
+        <form method="POST" action="?/updateAbout" use:enhance={onSubmit} class="edit-form">
+          <label for="aboutMe">About me</label>
+          <textarea id="aboutMe" name="aboutMe" rows="5" maxlength="5000"
+            >{data.about.aboutMe ?? ''}</textarea
+          >
+
+          {#if form?.error}
+            <p class="error" role="alert">{form.error}</p>
+          {/if}
+
+          <div class="edit-actions">
+            <button type="button" class="cancel" onclick={() => (editing = null)}>Cancel</button>
+            <button type="submit" class="save">Save</button>
+          </div>
+        </form>
+      {:else}
+        <button type="button" class="edit-toggle" onclick={() => toggle('aboutMe')}>Edit</button>
+      {/if}
+    </div>
+  {/if}
 </section>
 
 <!-- 02 — What I can do -->
@@ -43,42 +71,41 @@
   {:else}
     <p class="lead">Coming soon</p>
   {/if}
+
+  {#if data.owner}
+    <div class="editor">
+      {#if editing === 'whatICanDo'}
+        <form method="POST" action="?/updateAbout" use:enhance={onSubmit} class="edit-form">
+          <label for="whatICanDo">What I can do</label>
+          <textarea id="whatICanDo" name="whatICanDo" rows="5" maxlength="5000"
+            >{data.about.whatICanDo ?? ''}</textarea
+          >
+
+          {#if form?.error}
+            <p class="error" role="alert">{form.error}</p>
+          {/if}
+
+          <div class="edit-actions">
+            <button type="button" class="cancel" onclick={() => (editing = null)}>Cancel</button>
+            <button type="submit" class="save">Save</button>
+          </div>
+        </form>
+      {:else}
+        <button type="button" class="edit-toggle" onclick={() => toggle('whatICanDo')}>Edit</button>
+      {/if}
+    </div>
+  {/if}
 </section>
-
-{#if data.owner}
-  <!-- 03 — Edit about (kun owner) -->
-  <section>
-    <div class="label">03 — Edit about</div>
-    {#if editing}
-      <form method="POST" action="?/updateAbout" use:enhance={onSubmit} class="edit-form">
-        <label for="aboutMe">About me</label>
-        <textarea id="aboutMe" name="aboutMe" rows="5" maxlength="5000">{data.about.aboutMe ?? ''}</textarea>
-
-        <label for="whatICanDo">What I can do</label>
-        <textarea id="whatICanDo" name="whatICanDo" rows="5" maxlength="5000"
-          >{data.about.whatICanDo ?? ''}</textarea
-        >
-
-        {#if form?.error}
-          <p class="error" role="alert">{form.error}</p>
-        {/if}
-
-        <div class="edit-actions">
-          <button type="button" class="cancel" onclick={() => (editing = false)}>Cancel</button>
-          <button type="submit" class="save">Save</button>
-        </div>
-      </form>
-    {:else}
-      <button type="button" class="edit-toggle" onclick={() => (editing = true)}>Edit</button>
-    {/if}
-  </section>
-{/if}
 
 <style>
   .lead {
     font-size: 1.25rem;
     color: #cccccc;
     white-space: pre-line;
+  }
+
+  .editor {
+    margin-top: 1.5rem;
   }
 
   .edit-form {
