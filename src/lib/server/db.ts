@@ -245,11 +245,17 @@ export async function createEvent(
 	}
 
 /**
- * Henter alle artists sorteret med nyeste først.
+ * Henter alle artists sorteret efter deres tilknyttede events dato (nyeste først).
+ * Artister uden et tilknyttet event (eller hvor eventet mangler en dato) ligger
+ * nederst. Ved lige datoer sorteres efter id, så rækkefølgen er stabil.
  */
 export async function listArtists(db: D1Database): Promise<ArtistRow[]> {
 	const result = await db
-		.prepare('SELECT id, name, years, event_id, created_at FROM artists ' + 'ORDER BY id DESC')
+		.prepare(
+			'SELECT artists.id, artists.name, artists.years, artists.event_id, artists.created_at ' +
+				'FROM artists LEFT JOIN events ON events.id = artists.event_id ' +
+				"ORDER BY (events.event_date IS NULL), events.event_date DESC, artists.id DESC"
+		)
 		.all<ArtistRow>();
 	return result.results;
 }

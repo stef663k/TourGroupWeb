@@ -5,7 +5,9 @@ import { listArtists, createArtist, deleteArtist } from '$lib/server/db';
  * Minimal in-memory D1-stub der understøtter de SQL-forespørgsler
  * artist-funktionerne i db.ts bruger.
  */
-function createFakeD1(): D1Database {
+type FakeD1 = D1Database & { _events: { id: number; event_date: string | null }[] };
+
+function createFakeD1(): FakeD1 {
 	let nextId = 1;
 	const rows: {
 		id: number;
@@ -14,6 +16,7 @@ function createFakeD1(): D1Database {
 		event_id: number | null;
 		created_at: number;
 	}[] = [];
+	const events: { id: number; event_date: string | null }[] = [];
 
 	const prepare = (sql: string) => {
 		let args: unknown[] = [];
@@ -38,8 +41,23 @@ function createFakeD1(): D1Database {
 
 		const allStatement = <T>() => {
 			const q = normalized();
-			if (q.startsWith('SELECT id, name, years, event_id, created_at FROM artists ORDER BY')) {
-				return [...rows].sort((a, b) => b.id - a.id) as T[];
+			if (
+				q.startsWith(
+					'SELECT artists.id, artists.name, artists.years, artists.event_id, artists.created_at FROM artists LEFT JOIN events'
+				)
+			) {
+				const dateOf = (eventId: number | null) =>
+					events.find((e) => e.id === eventId)?.event_date ?? null;
+				const sorted = [...rows].sort((a, b) => {
+					const aDate = dateOf(a.event_id);
+					const bDate = dateOf(b.event_id);
+					const aNull = aDate === null ? 1 : 0;
+					const bNull = bDate === null ? 1 : 0;
+					if (aNull !== bNull) return aNull - bNull;
+					if (aDate !== bDate) return (bDate ?? '').localeCompare(aDate ?? '');
+					return b.id - a.id;
+				});
+				return sorted as T[];
 			}
 			throw new Error(`Unsupported SQL in all(): ${q}`);
 		};
@@ -73,7 +91,7 @@ function createFakeD1(): D1Database {
 		return statement;
 	};
 
-	return { prepare } as unknown as D1Database;
+	return { prepare, _events: events } as unknown as FakeD1;
 }
 
 describe('artists', () => {
@@ -104,11 +122,40 @@ describe('artists', () => {
 		expect(created.years).toBe('24-26');
 	});
 
-	it('sorterer med nyeste række først', async () => {
-		await createArtist(db, { name: 'Første' });
-		await createArtist(db, { name: 'Anden' });
-		const rows = await listArtists(db);
-		expect(rows.map((r) => r.name)).toEqual(['Anden', 'Første']);
+	it('sorterer efter tilknyttet events dato (nyeste først)', async () => {
+		const fake = createFakeD1();
+		fake._events.push(
+			{ id: 1, event_date: '2024-01-01' },
+			{ id: 2, event_date: '2026-01-01' }
+		);
+		await createArtist(fake, { name: 'Gammel', eventId: 1 });
+		await createArtist(fake, { name: 'Ny', eventId: 2 });
+
+		const rows = await listArtists(fake);
+		expect(rows.map((r) => r.name)).toEqual(['Ny', 'Gammel']);
+	});
+
+	it('placerer artister uden tilknyttet event nederst', async () => {
+		const fake = createFakeD1();
+		fake._events.push({ id: 1, event_date: '2026-01-01' });
+		await createArtist(fake, { name: 'Uden event' });
+		await createArtist(fake, { name: 'Med event', eventId: 1 });
+
+		const rows = await listArtists(fake);
+		expect(rows.map((r) => r.name)).toEqual(['Med event', 'Uden event']);
+	});
+
+	it('placerer event uden dato sammen med dem uden event', async () => {
+		const fake = createFakeD1();
+		fake._events.push(
+			{ id: 1, event_date: '2026-01-01' },
+			{ id: 2, event_date: null }
+		);
+		await createArtist(fake, { name: 'Uden dato', eventId: 2 });
+		await createArtist(fake, { name: 'Med dato', eventId: 1 });
+
+		const rows = await listArtists(fake);
+		expect(rows.map((r) => r.name)).toEqual(['Med dato', 'Uden dato']);
 	});
 
 	it('sletter en række', async () => {

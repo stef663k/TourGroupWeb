@@ -65,8 +65,23 @@ function createFakeD1() {
 			},
 			async all<T>() {
 				const q = normalized();
-				if (q.startsWith('SELECT id, name, years, event_id, created_at FROM artists ORDER BY')) {
-					return { results: [...rows].sort((a, b) => b.id - a.id) as T[], success: true };
+				if (
+					q.startsWith(
+						'SELECT artists.id, artists.name, artists.years, artists.event_id, artists.created_at FROM artists LEFT JOIN events'
+					)
+				) {
+					const dateOf = (eventId: number | null) =>
+						events.find((e) => e.id === eventId)?.event_date ?? null;
+					const sorted = [...rows].sort((a, b) => {
+						const aDate = dateOf(a.event_id);
+						const bDate = dateOf(b.event_id);
+						const aNull = aDate === null ? 1 : 0;
+						const bNull = bDate === null ? 1 : 0;
+						if (aNull !== bNull) return aNull - bNull;
+						if (aDate !== bDate) return (bDate ?? '').localeCompare(aDate ?? '');
+						return b.id - a.id;
+					});
+					return { results: sorted as T[], success: true };
 				}
 				if (q.startsWith('SELECT id, slug, name, event_date, location, description, details, link, created_at FROM events ORDER BY')) {
 					return { results: events as T[], success: true };
