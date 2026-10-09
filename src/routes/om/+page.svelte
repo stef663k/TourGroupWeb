@@ -21,7 +21,7 @@
 <!-- Hero -->
 <section class="hero">
   <div class="label">About</div>
-  <h1>About us</h1>
+  <h1>About</h1>
   <p class="lead">Lighting design and production for events.</p>
 </section>
 
