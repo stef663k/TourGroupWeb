@@ -287,7 +287,7 @@
     color: var(--fg-muted);
     font-size: 0.875rem;
     letter-spacing: 0.02em;
-    text-align: center;
+    text-align: left;
     overflow-wrap: anywhere;
   }
 
