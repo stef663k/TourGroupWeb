@@ -61,6 +61,13 @@ export interface AboutRow {
 	updated_at: number;
 }
 
+export interface CompanyRow {
+	id: number;
+	name: string;
+	link: string | null;
+	created_at: number;
+}
+
 /**
  * Slår owner-rækken op. Returnerer null hvis den ikke findes.
  */
@@ -198,7 +205,7 @@ export async function createEvent(
 		details?: string | null;
 		link?: string | null;
 	}
-	): Promise<EventRow> {
+): Promise<EventRow> {
 	const result = await db
 		.prepare(
 			'INSERT INTO events (slug, name, event_date, location, description, details, link) ' +
@@ -216,13 +223,13 @@ export async function createEvent(
 		.first<EventRow>();
 	if (!result) throw new Error('Could not create event.');
 	return result;
-	}
+}
 
-	/**
-	* Opdaterer et event og returnerer den opdaterede række.
-	* Returnerer null hvis eventet ikke findes. `slug` skal være unik.
-	*/
-	export async function updateEvent(
+/**
+ * Opdaterer et event og returnerer den opdaterede række.
+ * Returnerer null hvis eventet ikke findes. `slug` skal være unik.
+ */
+export async function updateEvent(
 	db: D1Database,
 	id: number,
 	input: {
@@ -234,7 +241,7 @@ export async function createEvent(
 		details?: string | null;
 		link?: string | null;
 	}
-	): Promise<EventRow | null> {
+): Promise<EventRow | null> {
 	const result = await db
 		.prepare(
 			'UPDATE events SET slug = ?1, name = ?2, event_date = ?3, location = ?4, description = ?5, details = ?6, link = ?7 ' +
@@ -252,7 +259,7 @@ export async function createEvent(
 		)
 		.first<EventRow>();
 	return result ?? null;
-	}
+}
 
 /**
  * Henter alle artists sorteret efter deres tilknyttede events dato (nyeste først).
@@ -460,4 +467,67 @@ export async function updateAbout(
 		.first<AboutRow>();
 	if (!result) throw new Error('Could not update about content.');
 	return result;
+}
+
+/**
+ * Henter alle virksomheder sorteret efter navn.
+ */
+export async function listCompanies(db: D1Database): Promise<CompanyRow[]> {
+	const result = await db
+		.prepare('SELECT id, name, link, created_at FROM companies ORDER BY name COLLATE NOCASE, id')
+		.all<CompanyRow>();
+	return result.results;
+}
+
+/**
+ * Slår en virksomhed op på id. Returnerer null hvis den ikke findes.
+ */
+export async function getCompany(db: D1Database, id: number): Promise<CompanyRow | null> {
+	const row = await db
+		.prepare('SELECT id, name, link, created_at FROM companies WHERE id = ?1')
+		.bind(id)
+		.first<CompanyRow>();
+	return row ?? null;
+}
+
+/**
+ * Opretter en virksomhed og returnerer rækken.
+ */
+export async function createCompany(
+	db: D1Database,
+	input: { name: string; link?: string | null }
+): Promise<CompanyRow> {
+	const result = await db
+		.prepare(
+			'INSERT INTO companies (name, link) VALUES (?1, ?2) RETURNING id, name, link, created_at'
+		)
+		.bind(input.name, input.link ?? null)
+		.first<CompanyRow>();
+	if (!result) throw new Error('Could not create company.');
+	return result;
+}
+
+/**
+ * Opdaterer en virksomhed og returnerer den opdaterede række.
+ * Returnerer null hvis rækken ikke findes.
+ */
+export async function updateCompany(
+	db: D1Database,
+	id: number,
+	input: { name: string; link?: string | null }
+): Promise<CompanyRow | null> {
+	const result = await db
+		.prepare(
+			'UPDATE companies SET name = ?1, link = ?2 WHERE id = ?3 RETURNING id, name, link, created_at'
+		)
+		.bind(input.name, input.link ?? null, id)
+		.first<CompanyRow>();
+	return result ?? null;
+}
+
+/**
+ * Sletter en virksomhed.
+ */
+export async function deleteCompany(db: D1Database, id: number): Promise<void> {
+	await db.prepare('DELETE FROM companies WHERE id = ?1').bind(id).run();
 }
