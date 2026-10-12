@@ -58,7 +58,6 @@
             {#if work.years}
               <span class="work-years">{work.years}</span>
             {/if}
-            <span class="work-arrow" aria-hidden="true">→</span>
           </a>
         {:else}
           <div class="work-link">
@@ -66,7 +65,6 @@
             {#if work.years}
               <span class="work-years">{work.years}</span>
             {/if}
-            <span class="work-arrow" aria-hidden="true">→</span>
           </div>
         {/if}
         {#if data.owner}
@@ -146,13 +144,6 @@
               maxlength="50"
               placeholder="22-24"
             />
-            <label for="edit-event-{work.id}">Linked event</label>
-            <select id="edit-event-{work.id}" name="eventId">
-              <option value="" selected={work.event_id === null}>None</option>
-              {#each data.events as option (option.id)}
-                <option value={option.id} selected={work.event_id === option.id}>{option.name}</option>
-              {/each}
-            </select>
             <div class="edit-actions">
               <button type="button" class="cancel" onclick={() => (editingId = null)}>Cancel</button>
               <button type="submit" class="save">Save</button>
@@ -170,8 +161,7 @@
     <div class="label">Create artist</div>
     <EventForm
       action="?/createArtist"
-      fields={['name', 'years', 'event']}
-      events={data.events}
+      fields={['name', 'years']}
       submitLabel="Add"
       pendingLabel="Adding…"
       error={form?.error}
@@ -416,8 +406,7 @@
     color: var(--fg-muted);
   }
 
-  .edit-form input,
-  .edit-form select {
+  .edit-form input {
     width: 100%;
     padding: 0.5rem 0.75rem;
     font-family: inherit;
@@ -429,8 +418,7 @@
     transition: border-color 0.2s var(--ease);
   }
 
-  .edit-form input:focus,
-  .edit-form select:focus {
+  .edit-form input:focus {
     outline: none;
     border-color: var(--accent);
   }
@@ -485,7 +473,7 @@
 
   .work-link {
     display: grid;
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: 1fr auto;
     align-items: baseline;
     gap: 0.75rem;
     width: 100%;
@@ -539,12 +527,6 @@
   a.work-link:hover,
   a.work-link:focus-visible {
     color: var(--accent);
-  }
-
-  a.work-link:hover .work-arrow,
-  a.work-link:focus-visible .work-arrow {
-    color: var(--accent);
-    transform: translateX(0.25rem);
   }
 
   .partners {

@@ -41,7 +41,7 @@ function validateLink(link: string): string | null {
 
 export const load: PageServerLoad = async ({ platform }) => {
 	const db = platform?.env?.DB;
-	if (!db) return { artists: [], events: [], companies: [] };
+	if (!db) return { artists: [], companies: [] };
 
 	// Events hentes først, så vi kan finde hver artists nyeste event (efter dato).
 	// listEvents sorterer nyeste dato først, så den første kamp pr. artist er den nyeste.
@@ -91,7 +91,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 		console.error('Kunne ikke hente companies:', err);
 	}
 
-	return { artists: artistsWithLinks, events, companies };
+	return { artists: artistsWithLinks, companies };
 	};
 
 	export const actions: Actions = {
@@ -152,7 +152,9 @@ export const load: PageServerLoad = async ({ platform }) => {
 		const existing = await getArtist(db, id);
 		if (!existing) return fail(404, { error: 'The entry does not exist.' });
 
-		let eventId: number | null = null;
+		// Event-linket redigeres ikke længere i UI'et. Hvis feltet slet ikke er
+		// sendt med, bevarer vi den eksisterende tilknytning frem for at rydde den.
+		let eventId: number | null = data.has('eventId') ? null : existing.event_id;
 		if (eventIdRaw) {
 			const parsed = Number(eventIdRaw);
 			if (!Number.isInteger(parsed)) {

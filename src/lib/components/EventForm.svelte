@@ -11,10 +11,8 @@
     | 'location'
     | 'link'
     | 'file'
-    | 'event'
     | 'artist';
 
-  type EventOption = { id: number; name: string };
   type ArtistOption = { id: number; name: string };
 
   let {
@@ -23,7 +21,6 @@
     fields = ['name', 'description', 'eventDate', 'location', 'link', 'file'],
     submitLabel = 'Create event',
     pendingLabel = 'Creating…',
-    events = [],
     artists = [],
     initial = {},
     id = null,
@@ -35,7 +32,6 @@
     fields?: Field[];
     submitLabel?: string;
     pendingLabel?: string;
-    events?: EventOption[];
     artists?: ArtistOption[];
     initial?: {
       name?: string | null;
@@ -157,16 +153,6 @@
       maxlength="50"
       placeholder="22-24"
     />
-  {/if}
-
-  {#if show('event')}
-    <label for="eventId">Linked event</label>
-    <select id="eventId" name="eventId">
-      <option value="">None</option>
-      {#each events as option (option.id)}
-        <option value={option.id}>{option.name}</option>
-      {/each}
-    </select>
   {/if}
 
   {#if show('artist')}
