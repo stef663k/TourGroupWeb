@@ -515,6 +515,7 @@
     font-size: 0.75rem;
     letter-spacing: 0.02em;
     white-space: nowrap;
+    border-bottom: none;
     transition: color 0.2s var(--ease);
   }
 
