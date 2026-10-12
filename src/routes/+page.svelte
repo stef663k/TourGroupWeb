@@ -55,24 +55,18 @@
         {#if work.event_id}
           <a class="work-link" href="/events#event-{work.event_id}">
             <span class="work-name">{work.name}</span>
-            <span class="work-meta">
-              {#if work.years}
-                <span class="work-years">{work.years}</span>
-              {/if}
-              <span class="work-latest" aria-hidden="true">
-                latest event
-                <span class="work-arrow">→</span>
-              </span>
-            </span>
+            {#if work.years}
+              <span class="work-years">{work.years}</span>
+            {/if}
+            <span class="work-arrow" aria-hidden="true">→</span>
           </a>
         {:else}
           <div class="work-link">
             <span class="work-name">{work.name}</span>
-            <span class="work-meta">
-              {#if work.years}
-                <span class="work-years">{work.years}</span>
-              {/if}
-            </span>
+            {#if work.years}
+              <span class="work-years">{work.years}</span>
+            {/if}
+            <span class="work-arrow" aria-hidden="true">→</span>
           </div>
         {/if}
         {#if data.owner}
@@ -113,6 +107,12 @@
         {/if}
       </li>
       <li class="work-foot">
+        {#if work.event_id}
+          <a class="work-latest" href="/events#event-{work.event_id}">
+            latest event
+            <span class="work-arrow" aria-hidden="true">→</span>
+          </a>
+        {/if}
         <button
           type="button"
           class="more"
@@ -361,7 +361,9 @@
 
   .work-foot {
     display: flex;
-    justify-content: flex-end;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
     padding: 0 clamp(0.5rem, 2vw, 1rem) clamp(0.75rem, 2vw, 1rem);
   }
 
@@ -483,7 +485,7 @@
 
   .work-link {
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr auto auto;
     align-items: baseline;
     gap: 0.75rem;
     width: 100%;
@@ -499,14 +501,6 @@
     letter-spacing: 0.02em;
   }
 
-  .work-meta {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.125rem;
-    text-align: right;
-  }
-
   .work-years {
     color: var(--fg-muted);
     font-size: 0.875rem;
@@ -520,8 +514,19 @@
     color: var(--fg-muted);
     font-size: 0.75rem;
     letter-spacing: 0.02em;
-    text-transform: lowercase;
     white-space: nowrap;
+    transition: color 0.2s var(--ease);
+  }
+
+  .work-latest:hover,
+  .work-latest:focus-visible {
+    color: var(--accent);
+  }
+
+  .work-latest:hover .work-arrow,
+  .work-latest:focus-visible .work-arrow {
+    color: var(--accent);
+    transform: translateX(0.25rem);
   }
 
   .work-arrow {
