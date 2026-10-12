@@ -34,6 +34,7 @@ function createFakeD1() {
 		description: string | null;
 		details: string | null;
 		link: string | null;
+		artist_id: number | null;
 		created_at: number;
 	}[] = [];
 	const companies: {
@@ -145,9 +146,9 @@ function createFakeD1() {
 						.sort((a, b) => a.sort_order - b.sort_order || a.id - b.id);
 					return { results: filtered as T[], success: true };
 					}
-					if (q.startsWith('SELECT id, slug, name, event_date, location, description, details, link, created_at FROM events ORDER BY')) {
+					if (q.startsWith('SELECT id, slug, name, event_date, location, description, details, link, artist_id, created_at FROM events ORDER BY')) {
 					return { results: events as T[], success: true };
-				}
+					}
 				if (q.startsWith('SELECT id, name, link, created_at FROM companies ORDER BY')) {
 					const sorted = [...companies].sort((a, b) =>
 						a.name.toLowerCase().localeCompare(b.name.toLowerCase())
@@ -191,18 +192,24 @@ function createFakeD1() {
 		_links: links,
 		_events: events,
 		_companies: companies,
-		_seedEvent: (event: { id: number; name: string }) => {
+		_seedEvent: (event: {
+			id: number;
+			name: string;
+			event_date?: string | null;
+			artist_id?: number | null;
+		}) => {
 			events.push({
 				id: event.id,
 				slug: event.name.toLowerCase(),
 				name: event.name,
-				event_date: null,
+				event_date: event.event_date ?? null,
 				location: null,
 				description: null,
 				details: null,
 				link: null,
+				artist_id: event.artist_id ?? null,
 				created_at: 0
-				});
+			});
 		}
 	};
 }
@@ -249,10 +256,11 @@ type LoadResult = {
 		name: string;
 		years: string | null;
 		details: string | null;
+		latestEventId: number | null;
 		links: { id: number; label: string; url: string }[];
 	}[];
 	companies: { id: number; name: string; link: string | null }[];
-};
+	};
 
 async function runLoad(platform: unknown): Promise<LoadResult> {
 	return (await load({ platform } as never)) as unknown as LoadResult;
@@ -304,7 +312,39 @@ describe('home load', () => {
 		expect(data.artists).toHaveLength(1);
 		expect(data.artists[0].name).toBe('Faustix');
 	});
-});
+
+	it('peger på artistens nyeste event efter dato', async () => {
+		const db = createFakeD1();
+		db._rows.push({
+			id: 1,
+			name: 'Faustix',
+			years: null,
+			event_id: 7,
+			details: null,
+			created_at: 0
+		});
+		// listEvents sorterer nyeste dato først.
+		db._seedEvent({ id: 9, name: 'Nyeste', event_date: '2026-06-01', artist_id: 1 });
+		db._seedEvent({ id: 8, name: 'Ældre', event_date: '2024-06-01', artist_id: 1 });
+
+		const data = await runLoad(makePlatform(db));
+		expect(data.artists[0].latestEventId).toBe(9);
+	});
+
+	it('giver latestEventId = null når artisten ikke har nogen event', async () => {
+		const db = createFakeD1();
+		db._rows.push({
+			id: 1,
+			name: 'Faustix',
+			years: null,
+			event_id: null,
+			details: null,
+			created_at: 0
+		});
+		const data = await runLoad(makePlatform(db));
+		expect(data.artists[0].latestEventId).toBeNull();
+	});
+	});
 
 describe('createArtist action', () => {
 	let errorSpy: ReturnType<typeof vi.spyOn>;

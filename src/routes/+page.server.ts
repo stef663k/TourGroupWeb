@@ -43,6 +43,22 @@ export const load: PageServerLoad = async ({ platform }) => {
 	const db = platform?.env?.DB;
 	if (!db) return { artists: [], events: [], companies: [] };
 
+	// Events hentes først, så vi kan finde hver artists nyeste event (efter dato).
+	// listEvents sorterer nyeste dato først, så den første kamp pr. artist er den nyeste.
+	let events: Awaited<ReturnType<typeof listEvents>> = [];
+	try {
+		events = await listEvents(db);
+	} catch (err) {
+		console.error('Kunne ikke hente events:', err);
+	}
+
+	const latestEventIdByArtist = new Map<number, number>();
+	for (const event of events) {
+		if (event.artist_id !== null && !latestEventIdByArtist.has(event.artist_id)) {
+			latestEventIdByArtist.set(event.artist_id, event.id);
+		}
+	}
+
 	// Hvis databasen ikke er sat op endnu (fx manglende migrationer), må siden
 	// ikke kaste en 500. Vi logger fejlen og viser en tom liste i stedet.
 	let artists: Awaited<ReturnType<typeof listArtists>> = [];
@@ -62,17 +78,11 @@ export const load: PageServerLoad = async ({ platform }) => {
 			}
 			return {
 				...artist,
+				latestEventId: latestEventIdByArtist.get(artist.id) ?? null,
 				links: links.map((link) => ({ id: link.id, label: link.label, url: link.url }))
 			};
 		})
 	);
-
-	let events: Awaited<ReturnType<typeof listEvents>> = [];
-	try {
-		events = await listEvents(db);
-	} catch (err) {
-		console.error('Kunne ikke hente events:', err);
-	}
 
 	let companies: Awaited<ReturnType<typeof listCompanies>> = [];
 	try {

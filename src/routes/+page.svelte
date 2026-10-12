@@ -52,8 +52,8 @@
   <ul class="work">
     {#each data.artists as work (work.id)}
       <li class="work-row">
-        {#if work.event_id}
-          <a class="work-link" href="/events#event-{work.event_id}">
+        {#if work.latestEventId}
+          <a class="work-link" href="/events#event-{work.latestEventId}">
             <span class="work-name">{work.name}</span>
             {#if work.years}
               <span class="work-years">{work.years}</span>
@@ -107,8 +107,8 @@
         {/if}
       </li>
       <li class="work-foot">
-        {#if work.event_id}
-          <a class="work-latest" href="/events#event-{work.event_id}">
+        {#if work.latestEventId}
+          <a class="work-latest" href="/events#event-{work.latestEventId}">
             latest event
             <span class="work-arrow" aria-hidden="true">→</span>
           </a>
