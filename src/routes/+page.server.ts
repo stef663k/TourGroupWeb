@@ -3,7 +3,6 @@ import type { Actions, PageServerLoad } from './$types';
 import {
 	createArtist,
 	listArtists,
-	getEvent,
 	listEvents,
 	getArtist,
 	updateArtist,
@@ -104,32 +103,20 @@ export const load: PageServerLoad = async ({ platform }) => {
 		const data = await request.formData();
 		const name = String(data.get('name') ?? '').trim();
 		const years = String(data.get('years') ?? '').trim();
-		const eventIdRaw = String(data.get('eventId') ?? '').trim();
 
 		if (!name) return fail(400, { error: 'Name is required.' });
 		if (name.length > 200) return fail(400, { error: 'The name is too long.' });
 		if (years.length > 50) return fail(400, { error: 'The year is too long.' });
 
-		let eventId: number | null = null;
-		if (eventIdRaw) {
-			const parsed = Number(eventIdRaw);
-			if (!Number.isInteger(parsed)) {
-				return fail(400, { error: 'Invalid event.' });
-			}
-			const event = await getEvent(db, parsed);
-			if (!event) return fail(400, { error: 'The selected event does not exist.' });
-			eventId = parsed;
-		}
-
 		try {
-			await createArtist(db, { name, years: years || null, eventId });
+			await createArtist(db, { name, years: years || null });
 		} catch (err) {
 			console.error('Kunne ikke oprette artist:', err);
 			return fail(500, { error: 'Could not save. Please try again later.' });
 		}
 
 		return { success: true };
-	},
+		},
 
 	updateArtist: async ({ request, platform, locals }) => {
 		if (!locals.owner) return fail(403, { error: 'Not authorized.' });
@@ -143,7 +130,6 @@ export const load: PageServerLoad = async ({ platform }) => {
 
 		const name = String(data.get('name') ?? '').trim();
 		const years = String(data.get('years') ?? '').trim();
-		const eventIdRaw = String(data.get('eventId') ?? '').trim();
 
 		if (!name) return fail(400, { error: 'Name is required.' });
 		if (name.length > 200) return fail(400, { error: 'The name is too long.' });
@@ -152,21 +138,8 @@ export const load: PageServerLoad = async ({ platform }) => {
 		const existing = await getArtist(db, id);
 		if (!existing) return fail(404, { error: 'The entry does not exist.' });
 
-		// Event-linket redigeres ikke længere i UI'et. Hvis feltet slet ikke er
-		// sendt med, bevarer vi den eksisterende tilknytning frem for at rydde den.
-		let eventId: number | null = data.has('eventId') ? null : existing.event_id;
-		if (eventIdRaw) {
-			const parsed = Number(eventIdRaw);
-			if (!Number.isInteger(parsed)) {
-				return fail(400, { error: 'Invalid event.' });
-			}
-			const event = await getEvent(db, parsed);
-			if (!event) return fail(400, { error: 'The selected event does not exist.' });
-			eventId = parsed;
-		}
-
 		try {
-			await updateArtist(db, id, { name, years: years || null, eventId });
+			await updateArtist(db, id, { name, years: years || null });
 		} catch (err) {
 			console.error('Kunne ikke opdatere artist:', err);
 			return fail(500, { error: 'Could not save. Please try again later.' });

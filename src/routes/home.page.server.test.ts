@@ -4,7 +4,7 @@ import { load, actions } from './+page.server';
 /**
  * Minimal in-memory D1-stub der understøtter de SQL-forespørgsler
  * artist-loadet bruger (listArtists + createArtist)
- * samt de event-opslag actions bruger til at validere event_id.
+ * samt de event-opslag actions bruger.
  */
 function createFakeD1() {
 	let nextId = 1;
@@ -12,7 +12,6 @@ function createFakeD1() {
 		id: number;
 		name: string;
 		years: string | null;
-		event_id: number | null;
 		details: string | null;
 		created_at: number;
 	}[] = [];
@@ -56,8 +55,8 @@ function createFakeD1() {
 			async first<T>() {
 				const q = normalized();
 				if (q.startsWith('INSERT INTO artists')) {
-					const [name, years, event_id] = args as [string, string | null, number | null];
-					const row = { id: nextId++, name, years, event_id, details: null, created_at: 0 };
+					const [name, years] = args as [string, string | null];
+					const row = { id: nextId++, name, years, details: null, created_at: 0 };
 					rows.push(row);
 					return row as T;
 				}
@@ -69,15 +68,14 @@ function createFakeD1() {
 					return row as T;
 				}
 				if (q.startsWith('UPDATE artists SET')) {
-					const [name, years, event_id, id] = args as [string, string | null, number | null, number];
+					const [name, years, id] = args as [string, string | null, number];
 					const row = rows.find((r) => r.id === id);
 					if (!row) return null;
 					row.name = name;
 					row.years = years;
-					row.event_id = event_id;
 					return row as T;
 				}
-				if (q.startsWith('SELECT id, name, years, event_id, details, created_at FROM artists WHERE id')) {
+				if (q.startsWith('SELECT id, name, years, details, created_at FROM artists WHERE id')) {
 					const [id] = args as [number];
 					return (rows.find((r) => r.id === id) ?? null) as T | null;
 				}
@@ -119,14 +117,21 @@ function createFakeD1() {
 				const q = normalized();
 				if (
 					q.startsWith(
-						'SELECT artists.id, artists.name, artists.years, artists.event_id, artists.details, artists.created_at FROM artists LEFT JOIN events'
+						'SELECT artists.id, artists.name, artists.years, artists.details, artists.created_at'
 					)
 				) {
-					const dateOf = (eventId: number | null) =>
-						events.find((e) => e.id === eventId)?.event_date ?? null;
+					const latestDateOf = (artistId: number) => {
+						let latest: string | null = null;
+						for (const e of events) {
+							if (e.artist_id === artistId && e.event_date !== null) {
+								if (latest === null || e.event_date > latest) latest = e.event_date;
+							}
+						}
+						return latest;
+					};
 					const sorted = [...rows].sort((a, b) => {
-						const aDate = dateOf(a.event_id);
-						const bDate = dateOf(b.event_id);
+						const aDate = latestDateOf(a.id);
+						const bDate = latestDateOf(b.id);
 						const aNull = aDate === null ? 1 : 0;
 						const bNull = bDate === null ? 1 : 0;
 						if (aNull !== bNull) return aNull - bNull;
@@ -304,7 +309,6 @@ describe('home load', () => {
 			id: 1,
 			name: 'Faustix',
 			years: '22-24',
-			event_id: null,
 			details: null,
 			created_at: 0
 		});
@@ -319,7 +323,6 @@ describe('home load', () => {
 			id: 1,
 			name: 'Faustix',
 			years: null,
-			event_id: 7,
 			details: null,
 			created_at: 0
 		});
@@ -337,7 +340,6 @@ describe('home load', () => {
 			id: 1,
 			name: 'Faustix',
 			years: null,
-			event_id: null,
 			details: null,
 			created_at: 0
 		});
@@ -414,48 +416,7 @@ describe('createArtist action', () => {
 		expect(res.success).toBe(true);
 		expect(db._rows[0].years).toBeNull();
 	});
-
-	it('knytter en artist til et eksisterende event', async () => {
-		const db = createFakeD1();
-		db._seedEvent({ id: 7, name: 'Sommerfest' });
-		const form = new FormData();
-		form.set('name', 'Faustix');
-		form.set('eventId', '7');
-		const res = await runCreateArtist(form, makePlatform(db));
-		expect(res.success).toBe(true);
-		expect(db._rows[0].event_id).toBe(7);
 	});
-
-	it('behandler et tomt event_id som null', async () => {
-		const db = createFakeD1();
-		const form = new FormData();
-		form.set('name', 'Faustix');
-		form.set('eventId', '');
-		const res = await runCreateArtist(form, makePlatform(db));
-		expect(res.success).toBe(true);
-		expect(db._rows[0].event_id).toBeNull();
-	});
-
-	it('afviser et event_id der ikke findes', async () => {
-		const db = createFakeD1();
-		const form = new FormData();
-		form.set('name', 'Faustix');
-		form.set('eventId', '999');
-		const res = await runCreateArtist(form, makePlatform(db));
-		expect(res.status).toBe(400);
-		expect(db._rows).toHaveLength(0);
-	});
-
-	it('afviser et ugyldigt event_id', async () => {
-		const db = createFakeD1();
-		const form = new FormData();
-		form.set('name', 'Faustix');
-		form.set('eventId', 'abc');
-		const res = await runCreateArtist(form, makePlatform(db));
-		expect(res.status).toBe(400);
-		expect(db._rows).toHaveLength(0);
-	});
-});
 
 describe('deleteArtist action', () => {
 	let errorSpy: ReturnType<typeof vi.spyOn>;
@@ -554,53 +515,6 @@ describe('updateArtist action', () => {
 		form.set('name', 'Faustix');
 		const res = await runUpdateArtist(form, makePlatform(createFakeD1()));
 		expect(res.status).toBe(404);
-	});
-
-	it('knytter et event til en eksisterende artist', async () => {
-		const db = createFakeD1();
-		const id = await seedArtist(db);
-		db._seedEvent({ id: 7, name: 'Sommerfest' });
-
-		const form = new FormData();
-		form.set('id', String(id));
-		form.set('name', 'Faustix');
-		form.set('years', '22-24');
-		form.set('eventId', '7');
-		const res = await runUpdateArtist(form, makePlatform(db));
-		expect(res.success).toBe(true);
-		expect(db._rows[0].event_id).toBe(7);
-	});
-
-	it('fjerner linket når event_id er tomt', async () => {
-		const db = createFakeD1();
-		const id = await seedArtist(db);
-		db._seedEvent({ id: 7, name: 'Sommerfest' });
-
-		const link = new FormData();
-		link.set('id', String(id));
-		link.set('name', 'Faustix');
-		link.set('eventId', '7');
-		await runUpdateArtist(link, makePlatform(db));
-		expect(db._rows[0].event_id).toBe(7);
-
-		const form = new FormData();
-		form.set('id', String(id));
-		form.set('name', 'Faustix');
-		form.set('eventId', '');
-		const res = await runUpdateArtist(form, makePlatform(db));
-		expect(res.success).toBe(true);
-		expect(db._rows[0].event_id).toBeNull();
-	});
-
-	it('afviser et event_id der ikke findes', async () => {
-		const db = createFakeD1();
-		const id = await seedArtist(db);
-		const form = new FormData();
-		form.set('id', String(id));
-		form.set('name', 'Faustix');
-		form.set('eventId', '999');
-		const res = await runUpdateArtist(form, makePlatform(db));
-		expect(res.status).toBe(400);
 	});
 
 	it('opdaterer navn og år', async () => {
@@ -949,7 +863,6 @@ describe('updateArtist action', () => {
 				id: 1,
 				name: 'Faustix',
 				years: null,
-				event_id: null,
 				details: null,
 				created_at: 0
 			});

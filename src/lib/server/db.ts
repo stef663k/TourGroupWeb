@@ -48,7 +48,6 @@ export interface ArtistRow {
 	id: number;
 	name: string;
 	years: string | null;
-	event_id: number | null;
 	details: string | null;
 	created_at: number;
 }
@@ -277,68 +276,70 @@ export async function updateEvent(
 			}
 
 			/**
-			* Henter alle artists sorteret efter deres tilknyttede events dato (nyeste først).
- * Artister uden et tilknyttet event (eller hvor eventet mangler en dato) ligger
- * nederst. Ved lige datoer sorteres efter id, så rækkefølgen er stabil.
- */
-export async function listArtists(db: D1Database): Promise<ArtistRow[]> {
-	const result = await db
-		.prepare(
-			'SELECT artists.id, artists.name, artists.years, artists.event_id, artists.details, artists.created_at ' +
-				'FROM artists LEFT JOIN events ON events.id = artists.event_id ' +
-				"ORDER BY (events.event_date IS NULL), events.event_date DESC, artists.id DESC"
-		)
-		.all<ArtistRow>();
-	return result.results;
-}
+			* Henter alle artists sorteret efter deres nyeste tilknyttede events dato
+			* (nyeste først). Artister uden tilknyttede events (eller hvor eventsene
+			* mangler en dato) ligger nederst. Ved lige datoer sorteres efter id, så
+			* rækkefølgen er stabil.
+			*/
+			export async function listArtists(db: D1Database): Promise<ArtistRow[]> {
+			const result = await db
+			.prepare(
+			'SELECT artists.id, artists.name, artists.years, artists.details, artists.created_at, ' +
+				'(SELECT MAX(events.event_date) FROM events WHERE events.artist_id = artists.id) AS latest_event_date ' +
+				'FROM artists ' +
+				'ORDER BY (latest_event_date IS NULL), latest_event_date DESC, artists.id DESC'
+			)
+			.all<ArtistRow>();
+			return result.results;
+			}
 
-/**
- * Slår en artist-række op på id. Returnerer null hvis den ikke findes.
- */
-export async function getArtist(db: D1Database, id: number): Promise<ArtistRow | null> {
-	const row = await db
-		.prepare('SELECT id, name, years, event_id, details, created_at FROM artists WHERE id = ?1')
-		.bind(id)
-		.first<ArtistRow>();
-		return row ?? null;
-		}
+			/**
+			* Slår en artist-række op på id. Returnerer null hvis den ikke findes.
+			*/
+			export async function getArtist(db: D1Database, id: number): Promise<ArtistRow | null> {
+			const row = await db
+			.prepare('SELECT id, name, years, details, created_at FROM artists WHERE id = ?1')
+			.bind(id)
+			.first<ArtistRow>();
+			return row ?? null;
+			}
 
-		/**
-		* Opdaterer en artist-række og returnerer den opdaterede række.
-		* Returnerer null hvis rækken ikke findes.
-		*/
-		export async function updateArtist(
+			/**
+			* Opdaterer en artist-række og returnerer den opdaterede række.
+			* Returnerer null hvis rækken ikke findes.
+			*/
+			export async function updateArtist(
 			db: D1Database,
 			id: number,
-			input: { name: string; years?: string | null; eventId?: number | null }
-		): Promise<ArtistRow | null> {
-		const result = await db
-		.prepare(
-			'UPDATE artists SET name = ?1, years = ?2, event_id = ?3 ' +
-				'WHERE id = ?4 RETURNING id, name, years, event_id, details, created_at'
-		)
-		.bind(input.name, input.years ?? null, input.eventId ?? null, id)
-		.first<ArtistRow>();
-		return result ?? null;
-		}
+			input: { name: string; years?: string | null }
+			): Promise<ArtistRow | null> {
+			const result = await db
+			.prepare(
+			'UPDATE artists SET name = ?1, years = ?2 ' +
+				'WHERE id = ?3 RETURNING id, name, years, details, created_at'
+			)
+			.bind(input.name, input.years ?? null, id)
+			.first<ArtistRow>();
+			return result ?? null;
+			}
 
-		/**
-		* Opretter en artist-række og returnerer den.
-		*/
-		export async function createArtist(
-		db: D1Database,
-		input: { name: string; years?: string | null; eventId?: number | null }
-		): Promise<ArtistRow> {
-		const result = await db
-		.prepare(
-			'INSERT INTO artists (name, years, event_id) ' +
-				'VALUES (?1, ?2, ?3) RETURNING id, name, years, event_id, details, created_at'
-		)
-		.bind(input.name, input.years ?? null, input.eventId ?? null)
-		.first<ArtistRow>();
-		if (!result) throw new Error('Could not create artist.');
-		return result;
-		}
+			/**
+			* Opretter en artist-række og returnerer den.
+			*/
+			export async function createArtist(
+			db: D1Database,
+			input: { name: string; years?: string | null }
+			): Promise<ArtistRow> {
+			const result = await db
+			.prepare(
+			'INSERT INTO artists (name, years) ' +
+				'VALUES (?1, ?2) RETURNING id, name, years, details, created_at'
+			)
+			.bind(input.name, input.years ?? null)
+			.first<ArtistRow>();
+			if (!result) throw new Error('Could not create artist.');
+			return result;
+			}
 
 /**
  * Opdaterer den uddybende tekst (details) på en artist og returnerer rækken.
@@ -352,12 +353,12 @@ export async function updateArtistDetails(
 	const result = await db
 		.prepare(
 			'UPDATE artists SET details = ?1 ' +
-				'WHERE id = ?2 RETURNING id, name, years, event_id, details, created_at'
+				'WHERE id = ?2 RETURNING id, name, years, details, created_at'
 		)
 		.bind(details, id)
 		.first<ArtistRow>();
 	return result ?? null;
-}
+	}
 
 /**
  * Sletter en artist-række. Tilhørende links fjernes via ON DELETE CASCADE.

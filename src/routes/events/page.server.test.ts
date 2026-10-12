@@ -22,7 +22,6 @@ function createFakeD1() {
 		id: number;
 		name: string;
 		years: string | null;
-		event_id: number | null;
 		details: string | null;
 		created_at: number;
 	}[] = [];
@@ -51,7 +50,7 @@ function createFakeD1() {
 				}
 				if (
 					q.startsWith(
-						'SELECT artists.id, artists.name, artists.years, artists.event_id, artists.details, artists.created_at FROM artists LEFT JOIN events'
+						'SELECT artists.id, artists.name, artists.years, artists.details, artists.created_at'
 					)
 				) {
 					return { results: artists as T[], success: true };
@@ -92,7 +91,7 @@ function createFakeD1() {
 					const [id] = args as [number];
 					return (events.find((e) => e.id === id) ?? null) as T | null;
 				}
-				if (q.startsWith('SELECT id, name, years, event_id, details, created_at FROM artists WHERE id')) {
+				if (q.startsWith('SELECT id, name, years, details, created_at FROM artists WHERE id')) {
 					const [id] = args as [number];
 					return (artists.find((a) => a.id === id) ?? null) as T | null;
 				}
@@ -203,7 +202,6 @@ function createFakeD1() {
 				id: row.id,
 				name: row.name,
 				years: null,
-				event_id: null,
 				details: null,
 				created_at: 0
 			});
