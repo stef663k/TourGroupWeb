@@ -7,7 +7,12 @@ import {
 	listEvents,
 	getArtist,
 	updateArtist,
+	updateArtistDetails,
 	deleteArtist,
+	listArtistLinks,
+	getArtistLink,
+	addArtistLink,
+	removeArtistLink,
 	listCompanies,
 	getCompany,
 	createCompany,
@@ -47,6 +52,21 @@ export const load: PageServerLoad = async ({ platform }) => {
 		console.error('Kunne ikke hente artists:', err);
 	}
 
+	const artistsWithLinks = await Promise.all(
+		artists.map(async (artist) => {
+			let links: Awaited<ReturnType<typeof listArtistLinks>> = [];
+			try {
+				links = await listArtistLinks(db, artist.id);
+			} catch (err) {
+				console.error(`Kunne ikke hente links for artist ${artist.id}:`, err);
+			}
+			return {
+				...artist,
+				links: links.map((link) => ({ id: link.id, label: link.label, url: link.url }))
+			};
+		})
+	);
+
 	let events: Awaited<ReturnType<typeof listEvents>> = [];
 	try {
 		events = await listEvents(db);
@@ -61,10 +81,10 @@ export const load: PageServerLoad = async ({ platform }) => {
 		console.error('Kunne ikke hente companies:', err);
 	}
 
-	return { artists, events, companies };
-};
+	return { artists: artistsWithLinks, events, companies };
+	};
 
-export const actions: Actions = {
+	export const actions: Actions = {
 	createArtist: async ({ request, platform, locals }) => {
 		if (!locals.owner) return fail(403, { error: 'Not authorized.' });
 
@@ -138,6 +158,88 @@ export const actions: Actions = {
 		} catch (err) {
 			console.error('Kunne ikke opdatere artist:', err);
 			return fail(500, { error: 'Could not save. Please try again later.' });
+		}
+
+		return { success: true };
+	},
+
+	updateArtistDetails: async ({ request, platform, locals }) => {
+		if (!locals.owner) return fail(403, { error: 'Not authorized.' });
+
+		const db = platform?.env?.DB;
+		if (!db) return fail(500, { error: 'The database is not configured.' });
+
+		const data = await request.formData();
+		const id = Number(String(data.get('id') ?? '').trim());
+		if (!Number.isInteger(id)) return fail(400, { error: 'Invalid entry.' });
+
+		const details = String(data.get('details') ?? '').trim();
+		if (details.length > 5000) return fail(400, { error: 'The text is too long.' });
+
+		const existing = await getArtist(db, id);
+		if (!existing) return fail(404, { error: 'The entry does not exist.' });
+
+		try {
+			await updateArtistDetails(db, id, details || null);
+		} catch (err) {
+			console.error('Kunne ikke opdatere artist-tekst:', err);
+			return fail(500, { error: 'Could not save. Please try again later.' });
+		}
+
+		return { success: true };
+	},
+
+	addArtistLink: async ({ request, platform, locals }) => {
+		if (!locals.owner) return fail(403, { error: 'Not authorized.' });
+
+		const db = platform?.env?.DB;
+		if (!db) return fail(500, { error: 'The database is not configured.' });
+
+		const data = await request.formData();
+		const id = Number(String(data.get('id') ?? '').trim());
+		if (!Number.isInteger(id)) return fail(400, { error: 'Invalid entry.' });
+
+		const label = String(data.get('label') ?? '').trim();
+		const url = String(data.get('url') ?? '').trim();
+
+		if (!label) return fail(400, { error: 'A link text is required.' });
+		if (label.length > 200) return fail(400, { error: 'The link text is too long.' });
+
+		const linkError = validateLink(url);
+		if (!url) return fail(400, { error: 'A link is required.' });
+		if (linkError) return fail(400, { error: linkError });
+
+		const existing = await getArtist(db, id);
+		if (!existing) return fail(404, { error: 'The entry does not exist.' });
+
+		try {
+			await addArtistLink(db, { artistId: id, label, url });
+		} catch (err) {
+			console.error('Kunne ikke tilføje artist-link:', err);
+			return fail(500, { error: 'Could not save. Please try again later.' });
+		}
+
+		return { success: true };
+	},
+
+	removeArtistLink: async ({ request, platform, locals }) => {
+		if (!locals.owner) return fail(403, { error: 'Not authorized.' });
+
+		const db = platform?.env?.DB;
+		if (!db) return fail(500, { error: 'The database is not configured.' });
+
+		const data = await request.formData();
+		const id = Number(String(data.get('id') ?? '').trim());
+		if (!Number.isInteger(id)) return fail(400, { error: 'Invalid link.' });
+
+		const existing = await getArtistLink(db, id);
+		if (!existing) return fail(404, { error: 'The link does not exist.' });
+
+		try {
+			await removeArtistLink(db, id);
+		} catch (err) {
+			console.error('Kunne ikke slette artist-link:', err);
+			return fail(500, { error: 'Could not delete. Please try again later.' });
 		}
 
 		return { success: true };
@@ -239,5 +341,5 @@ export const actions: Actions = {
 		}
 
 		return { success: true };
-	}
-	};
+		}
+		};

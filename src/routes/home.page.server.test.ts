@@ -13,6 +13,16 @@ function createFakeD1() {
 		name: string;
 		years: string | null;
 		event_id: number | null;
+		details: string | null;
+		created_at: number;
+	}[] = [];
+	let nextLinkId = 1;
+	const links: {
+		id: number;
+		artist_id: number;
+		label: string;
+		url: string;
+		sort_order: number;
 		created_at: number;
 	}[] = [];
 	const events: {
@@ -46,8 +56,15 @@ function createFakeD1() {
 				const q = normalized();
 				if (q.startsWith('INSERT INTO artists')) {
 					const [name, years, event_id] = args as [string, string | null, number | null];
-					const row = { id: nextId++, name, years, event_id, created_at: 0 };
+					const row = { id: nextId++, name, years, event_id, details: null, created_at: 0 };
 					rows.push(row);
+					return row as T;
+				}
+				if (q.startsWith('UPDATE artists SET details')) {
+					const [details, id] = args as [string | null, number];
+					const row = rows.find((r) => r.id === id);
+					if (!row) return null;
+					row.details = details;
 					return row as T;
 				}
 				if (q.startsWith('UPDATE artists SET')) {
@@ -59,9 +76,19 @@ function createFakeD1() {
 					row.event_id = event_id;
 					return row as T;
 				}
-				if (q.startsWith('SELECT id, name, years, event_id, created_at FROM artists WHERE id')) {
+				if (q.startsWith('SELECT id, name, years, event_id, details, created_at FROM artists WHERE id')) {
 					const [id] = args as [number];
 					return (rows.find((r) => r.id === id) ?? null) as T | null;
+				}
+				if (q.startsWith('INSERT INTO artist_links')) {
+					const [artist_id, label, url, sort_order] = args as [number, string, string, number];
+					const row = { id: nextLinkId++, artist_id, label, url, sort_order, created_at: 0 };
+					links.push(row);
+					return row as T;
+				}
+				if (q.startsWith('SELECT id, artist_id, label, url, sort_order, created_at FROM artist_links WHERE id')) {
+					const [id] = args as [number];
+					return (links.find((l) => l.id === id) ?? null) as T | null;
 				}
 				if (q.startsWith('SELECT id, slug, name, event_date, location, description, details, link, created_at FROM events WHERE id')) {
 					const [id] = args as [number];
@@ -91,7 +118,7 @@ function createFakeD1() {
 				const q = normalized();
 				if (
 					q.startsWith(
-						'SELECT artists.id, artists.name, artists.years, artists.event_id, artists.created_at FROM artists LEFT JOIN events'
+						'SELECT artists.id, artists.name, artists.years, artists.event_id, artists.details, artists.created_at FROM artists LEFT JOIN events'
 					)
 				) {
 					const dateOf = (eventId: number | null) =>
@@ -106,8 +133,19 @@ function createFakeD1() {
 						return b.id - a.id;
 					});
 					return { results: sorted as T[], success: true };
-				}
-				if (q.startsWith('SELECT id, slug, name, event_date, location, description, details, link, created_at FROM events ORDER BY')) {
+					}
+					if (
+					q.startsWith(
+						'SELECT id, artist_id, label, url, sort_order, created_at FROM artist_links WHERE artist_id'
+					)
+					) {
+					const [artistId] = args as [number];
+					const filtered = links
+						.filter((l) => l.artist_id === artistId)
+						.sort((a, b) => a.sort_order - b.sort_order || a.id - b.id);
+					return { results: filtered as T[], success: true };
+					}
+					if (q.startsWith('SELECT id, slug, name, event_date, location, description, details, link, created_at FROM events ORDER BY')) {
 					return { results: events as T[], success: true };
 				}
 				if (q.startsWith('SELECT id, name, link, created_at FROM companies ORDER BY')) {
@@ -124,6 +162,15 @@ function createFakeD1() {
 					const [id] = args as [number];
 					const idx = rows.findIndex((r) => r.id === id);
 					if (idx >= 0) rows.splice(idx, 1);
+					for (let i = links.length - 1; i >= 0; i--) {
+						if (links[i].artist_id === id) links.splice(i, 1);
+					}
+					return { success: true } as D1Result<T>;
+				}
+				if (q.startsWith('DELETE FROM artist_links WHERE id')) {
+					const [id] = args as [number];
+					const idx = links.findIndex((l) => l.id === id);
+					if (idx >= 0) links.splice(idx, 1);
 					return { success: true } as D1Result<T>;
 				}
 				if (q.startsWith('DELETE FROM companies WHERE id')) {
@@ -141,6 +188,7 @@ function createFakeD1() {
 	return {
 		prepare,
 		_rows: rows,
+		_links: links,
 		_events: events,
 		_companies: companies,
 		_seedEvent: (event: { id: number; name: string }) => {
@@ -196,7 +244,13 @@ async function runDeleteArtist(form: FormData, platform: unknown, owner = true):
 }
 
 type LoadResult = {
-	artists: { id: number; name: string; years: string | null }[];
+	artists: {
+		id: number;
+		name: string;
+		years: string | null;
+		details: string | null;
+		links: { id: number; label: string; url: string }[];
+	}[];
 	companies: { id: number; name: string; link: string | null }[];
 };
 
@@ -243,6 +297,7 @@ describe('home load', () => {
 			name: 'Faustix',
 			years: '22-24',
 			event_id: null,
+			details: null,
 			created_at: 0
 		});
 		const data = await runLoad(makePlatform(db));
@@ -786,5 +841,331 @@ describe('updateArtist action', () => {
 		const res = await runDeleteCompany(form, makePlatform(db));
 		expect(res.success).toBe(true);
 		expect(db._companies).toHaveLength(0);
+		});
+		});
+
+		async function runUpdateArtistDetails(form: FormData, platform: unknown, owner = true): Promise<ActionResult> {
+		const action = actions.updateArtistDetails;
+		const result = await action({
+			request: new Request('http://localhost/?/updateArtistDetails', { method: 'POST', body: form }),
+			platform,
+			locals: { owner }
+		} as never);
+		return result as unknown as ActionResult;
+		}
+
+		async function runAddArtistLink(form: FormData, platform: unknown, owner = true): Promise<ActionResult> {
+		const action = actions.addArtistLink;
+		const result = await action({
+			request: new Request('http://localhost/?/addArtistLink', { method: 'POST', body: form }),
+			platform,
+			locals: { owner }
+		} as never);
+		return result as unknown as ActionResult;
+		}
+
+		async function runRemoveArtistLink(form: FormData, platform: unknown, owner = true): Promise<ActionResult> {
+		const action = actions.removeArtistLink;
+		const result = await action({
+			request: new Request('http://localhost/?/removeArtistLink', { method: 'POST', body: form }),
+			platform,
+			locals: { owner }
+		} as never);
+		return result as unknown as ActionResult;
+		}
+
+		describe('artist links load', () => {
+		let errorSpy: ReturnType<typeof vi.spyOn>;
+
+		beforeEach(() => {
+			errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		});
+
+		afterEach(() => {
+			errorSpy.mockRestore();
+		});
+
+		it('kortlægger links pr. artist', async () => {
+			const db = createFakeD1();
+			const create = new FormData();
+			create.set('name', 'Faustix');
+			await runCreateArtist(create, makePlatform(db));
+			const id = db._rows[0].id;
+			const link = new FormData();
+			link.set('id', String(id));
+			link.set('label', 'Website');
+			link.set('url', 'https://faustix.dk');
+			await runAddArtistLink(link, makePlatform(db));
+
+			const data = await runLoad(makePlatform(db));
+			expect(data.artists[0].links).toEqual([
+				{ id: 1, label: 'Website', url: 'https://faustix.dk' }
+			]);
+		});
+
+		it('kaster ikke når artist_links-tabellen mangler', async () => {
+			const db = createFakeD1();
+			db._rows.push({
+				id: 1,
+				name: 'Faustix',
+				years: null,
+				event_id: null,
+				details: null,
+				created_at: 0
+			});
+			const original = db.prepare.bind(db);
+			// Simuler at kun artist_links-opslaget fejler.
+			(db as unknown as { prepare: typeof db.prepare }).prepare = ((sql: string) => {
+				if (sql.includes('artist_links')) throw new Error('D1_ERROR: no such table: artist_links');
+				return original(sql);
+			}) as typeof db.prepare;
+
+			const data = await runLoad(makePlatform(db));
+			expect(data.artists[0].links).toEqual([]);
+			expect(errorSpy).toHaveBeenCalled();
+		});
+		});
+
+		describe('updateArtistDetails action', () => {
+		let errorSpy: ReturnType<typeof vi.spyOn>;
+
+		beforeEach(() => {
+			errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		});
+
+		afterEach(() => {
+			errorSpy.mockRestore();
+		});
+
+		async function seedArtist(db: ReturnType<typeof createFakeD1>) {
+			const create = new FormData();
+			create.set('name', 'Faustix');
+			await runCreateArtist(create, makePlatform(db));
+			return db._rows[0].id;
+		}
+
+		it('afviser en ikke-owner', async () => {
+			const form = new FormData();
+			form.set('id', '1');
+			form.set('details', 'tekst');
+			const res = await runUpdateArtistDetails(form, makePlatform(createFakeD1()), false);
+			expect(res.status).toBe(403);
+		});
+
+		it('afviser et ugyldigt id', async () => {
+			const form = new FormData();
+			form.set('id', 'abc');
+			form.set('details', 'tekst');
+			const res = await runUpdateArtistDetails(form, makePlatform(createFakeD1()));
+			expect(res.status).toBe(400);
+		});
+
+		it('returnerer 404 for en post der ikke findes', async () => {
+			const form = new FormData();
+			form.set('id', '999');
+			form.set('details', 'tekst');
+			const res = await runUpdateArtistDetails(form, makePlatform(createFakeD1()));
+			expect(res.status).toBe(404);
+		});
+
+		it('gemmer teksten', async () => {
+			const db = createFakeD1();
+			const id = await seedArtist(db);
+			const form = new FormData();
+			form.set('id', String(id));
+			form.set('details', 'Lysdesigner fra Aarhus.');
+			const res = await runUpdateArtistDetails(form, makePlatform(db));
+			expect(res.success).toBe(true);
+			expect(db._rows[0].details).toBe('Lysdesigner fra Aarhus.');
+		});
+
+		it('behandler en tom tekst som null', async () => {
+			const db = createFakeD1();
+			const id = await seedArtist(db);
+			const form = new FormData();
+			form.set('id', String(id));
+			form.set('details', '   ');
+			const res = await runUpdateArtistDetails(form, makePlatform(db));
+			expect(res.success).toBe(true);
+			expect(db._rows[0].details).toBeNull();
+		});
+
+		it('afviser en for lang tekst', async () => {
+			const db = createFakeD1();
+			const id = await seedArtist(db);
+			const form = new FormData();
+			form.set('id', String(id));
+			form.set('details', 'x'.repeat(5001));
+			const res = await runUpdateArtistDetails(form, makePlatform(db));
+			expect(res.status).toBe(400);
+		});
+
+		it('fejler når databasen ikke er konfigureret', async () => {
+			const form = new FormData();
+			form.set('id', '1');
+			form.set('details', 'tekst');
+			const res = await runUpdateArtistDetails(form, makePlatform(undefined));
+			expect(res.status).toBe(500);
+		});
+		});
+
+		describe('addArtistLink action', () => {
+		let errorSpy: ReturnType<typeof vi.spyOn>;
+
+		beforeEach(() => {
+			errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		});
+
+		afterEach(() => {
+			errorSpy.mockRestore();
+		});
+
+		async function seedArtist(db: ReturnType<typeof createFakeD1>) {
+			const create = new FormData();
+			create.set('name', 'Faustix');
+			await runCreateArtist(create, makePlatform(db));
+			return db._rows[0].id;
+		}
+
+		it('afviser en ikke-owner', async () => {
+			const form = new FormData();
+			form.set('id', '1');
+			form.set('label', 'Website');
+			form.set('url', 'https://faustix.dk');
+			const res = await runAddArtistLink(form, makePlatform(createFakeD1()), false);
+			expect(res.status).toBe(403);
+		});
+
+		it('afviser et ugyldigt id', async () => {
+			const form = new FormData();
+			form.set('id', 'abc');
+			form.set('label', 'Website');
+			form.set('url', 'https://faustix.dk');
+			const res = await runAddArtistLink(form, makePlatform(createFakeD1()));
+			expect(res.status).toBe(400);
+		});
+
+		it('kræver en linktekst', async () => {
+			const db = createFakeD1();
+			await seedArtist(db);
+			const form = new FormData();
+			form.set('id', String(db._rows[0].id));
+			form.set('url', 'https://faustix.dk');
+			const res = await runAddArtistLink(form, makePlatform(db));
+			expect(res.status).toBe(400);
+		});
+
+		it('kræver en URL', async () => {
+			const db = createFakeD1();
+			await seedArtist(db);
+			const form = new FormData();
+			form.set('id', String(db._rows[0].id));
+			form.set('label', 'Website');
+			const res = await runAddArtistLink(form, makePlatform(db));
+			expect(res.status).toBe(400);
+		});
+
+		it('afviser en ugyldig URL', async () => {
+			const db = createFakeD1();
+			await seedArtist(db);
+			const form = new FormData();
+			form.set('id', String(db._rows[0].id));
+			form.set('label', 'Website');
+			form.set('url', 'javascript:alert(1)');
+			const res = await runAddArtistLink(form, makePlatform(db));
+			expect(res.status).toBe(400);
+			expect(db._links).toHaveLength(0);
+		});
+
+		it('returnerer 404 for en artist der ikke findes', async () => {
+			const form = new FormData();
+			form.set('id', '999');
+			form.set('label', 'Website');
+			form.set('url', 'https://faustix.dk');
+			const res = await runAddArtistLink(form, makePlatform(createFakeD1()));
+			expect(res.status).toBe(404);
+		});
+
+		it('tilføjer et gyldigt link', async () => {
+			const db = createFakeD1();
+			await seedArtist(db);
+			const form = new FormData();
+			form.set('id', String(db._rows[0].id));
+			form.set('label', 'Website');
+			form.set('url', 'https://faustix.dk');
+			const res = await runAddArtistLink(form, makePlatform(db));
+			expect(res.success).toBe(true);
+			expect(db._links).toHaveLength(1);
+			expect(db._links[0].artist_id).toBe(db._rows[0].id);
+			expect(db._links[0].url).toBe('https://faustix.dk');
+		});
+
+		it('fejler når databasen ikke er konfigureret', async () => {
+			const form = new FormData();
+			form.set('id', '1');
+			form.set('label', 'Website');
+			form.set('url', 'https://faustix.dk');
+			const res = await runAddArtistLink(form, makePlatform(undefined));
+			expect(res.status).toBe(500);
+		});
+		});
+
+		describe('removeArtistLink action', () => {
+		let errorSpy: ReturnType<typeof vi.spyOn>;
+
+		beforeEach(() => {
+			errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		});
+
+		afterEach(() => {
+			errorSpy.mockRestore();
+		});
+
+		it('afviser en ikke-owner', async () => {
+			const form = new FormData();
+			form.set('id', '1');
+			const res = await runRemoveArtistLink(form, makePlatform(createFakeD1()), false);
+			expect(res.status).toBe(403);
+		});
+
+		it('afviser et ugyldigt id', async () => {
+			const form = new FormData();
+			form.set('id', 'abc');
+			const res = await runRemoveArtistLink(form, makePlatform(createFakeD1()));
+			expect(res.status).toBe(400);
+		});
+
+		it('returnerer 404 for et link der ikke findes', async () => {
+			const form = new FormData();
+			form.set('id', '999');
+			const res = await runRemoveArtistLink(form, makePlatform(createFakeD1()));
+			expect(res.status).toBe(404);
+		});
+
+		it('sletter et link', async () => {
+			const db = createFakeD1();
+			const create = new FormData();
+			create.set('name', 'Faustix');
+			await runCreateArtist(create, makePlatform(db));
+
+			const add = new FormData();
+			add.set('id', String(db._rows[0].id));
+			add.set('label', 'Website');
+			add.set('url', 'https://faustix.dk');
+			await runAddArtistLink(add, makePlatform(db));
+			expect(db._links).toHaveLength(1);
+
+			const form = new FormData();
+			form.set('id', String(db._links[0].id));
+			const res = await runRemoveArtistLink(form, makePlatform(db));
+			expect(res.success).toBe(true);
+			expect(db._links).toHaveLength(0);
+		});
+
+		it('fejler når databasen ikke er konfigureret', async () => {
+			const form = new FormData();
+			form.set('id', '1');
+			const res = await runRemoveArtistLink(form, makePlatform(undefined));
+			expect(res.status).toBe(500);
 		});
 		});

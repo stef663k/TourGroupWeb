@@ -1,7 +1,9 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import EventForm from '$lib/components/EventForm.svelte';
+  import ArtistModal from '$lib/components/ArtistModal.svelte';
   import type { PageData, ActionData } from './$types';
+  import type { ComponentProps } from 'svelte';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -28,6 +30,8 @@
   function toggleEditCompany(id: number) {
     editingCompanyId = editingCompanyId === id ? null : id;
   }
+
+  let modalArtist = $state<ComponentProps<typeof ArtistModal>['artist'] | null>(null);
   </script>
 
 <svelte:head>
@@ -65,6 +69,16 @@
             <span class="work-arrow" aria-hidden="true">→</span>
           </div>
         {/if}
+        <button
+          type="button"
+          class="icon-btn more"
+          aria-haspopup="dialog"
+          aria-label="More about {work.name}"
+          title="More"
+          onclick={() => (modalArtist = work)}
+        >
+          <span aria-hidden="true">→</span>
+        </button>
         {#if data.owner}
           <button
             type="button"
@@ -259,10 +273,14 @@
         <button type="submit" class="save">Add</button>
       </div>
     </form>
-  </section>
-{/if}
+    </section>
+    {/if}
 
-<style>
+    {#if modalArtist}
+    <ArtistModal artist={modalArtist} owner={data.owner} onclose={() => (modalArtist = null)} />
+    {/if}
+
+    <style>
   .lead {
     font-size: 1.25rem;
     color: #cccccc;
@@ -326,6 +344,17 @@
   .work-row .icon-btn.delete:focus-visible {
     color: #ff6b6b;
     background: rgba(255, 107, 107, 0.1);
+  }
+
+  .work-row .icon-btn.more:hover,
+  .work-row .icon-btn.more:focus-visible {
+    color: var(--accent);
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .work-row .icon-btn.more span {
+    font-size: 1.0625rem;
+    line-height: 1;
   }
 
   .work-row .icon-btn svg {

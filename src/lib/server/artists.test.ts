@@ -1,19 +1,49 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { listArtists, createArtist, deleteArtist } from '$lib/server/db';
+import {
+	listArtists,
+	createArtist,
+	deleteArtist,
+	getArtist,
+	updateArtistDetails,
+	listArtistLinks,
+	getArtistLink,
+	addArtistLink,
+	removeArtistLink
+} from '$lib/server/db';
 
 /**
  * Minimal in-memory D1-stub der understøtter de SQL-forespørgsler
  * artist-funktionerne i db.ts bruger.
  */
-type FakeD1 = D1Database & { _events: { id: number; event_date: string | null }[] };
+type FakeD1 = D1Database & {
+	_events: { id: number; event_date: string | null }[];
+	_links: {
+		id: number;
+		artist_id: number;
+		label: string;
+		url: string;
+		sort_order: number;
+		created_at: number;
+	}[];
+};
 
 function createFakeD1(): FakeD1 {
 	let nextId = 1;
+	let nextLinkId = 1;
 	const rows: {
 		id: number;
 		name: string;
 		years: string | null;
 		event_id: number | null;
+		details: string | null;
+		created_at: number;
+	}[] = [];
+	const links: {
+		id: number;
+		artist_id: number;
+		label: string;
+		url: string;
+		sort_order: number;
 		created_at: number;
 	}[] = [];
 	const events: { id: number; event_date: string | null }[] = [];
@@ -31,10 +61,39 @@ function createFakeD1(): FakeD1 {
 					name,
 					years,
 					event_id,
+					details: null,
 					created_at: Math.floor(Date.now() / 1000)
 				};
 				rows.push(row);
 				return row as T;
+			}
+			if (q.startsWith('SELECT id, name, years, event_id, details, created_at FROM artists WHERE id')) {
+				const [id] = args as [number];
+				return (rows.find((r) => r.id === id) ?? null) as T | null;
+			}
+			if (q.startsWith('UPDATE artists SET details')) {
+				const [details, id] = args as [string | null, number];
+				const row = rows.find((r) => r.id === id);
+				if (!row) return null;
+				row.details = details;
+				return row as T;
+			}
+			if (q.startsWith('INSERT INTO artist_links')) {
+				const [artist_id, label, url, sort_order] = args as [number, string, string, number];
+				const row = {
+					id: nextLinkId++,
+					artist_id,
+					label,
+					url,
+					sort_order,
+					created_at: Math.floor(Date.now() / 1000)
+				};
+				links.push(row);
+				return row as T;
+			}
+			if (q.startsWith('SELECT id, artist_id, label, url, sort_order, created_at FROM artist_links WHERE id')) {
+				const [id] = args as [number];
+				return (links.find((l) => l.id === id) ?? null) as T | null;
 			}
 			throw new Error(`Unsupported SQL in first(): ${q}`);
 		};
@@ -43,7 +102,7 @@ function createFakeD1(): FakeD1 {
 			const q = normalized();
 			if (
 				q.startsWith(
-					'SELECT artists.id, artists.name, artists.years, artists.event_id, artists.created_at FROM artists LEFT JOIN events'
+					'SELECT artists.id, artists.name, artists.years, artists.event_id, artists.details, artists.created_at FROM artists LEFT JOIN events'
 				)
 			) {
 				const dateOf = (eventId: number | null) =>
@@ -58,20 +117,37 @@ function createFakeD1(): FakeD1 {
 					return b.id - a.id;
 				});
 				return sorted as T[];
-			}
-			throw new Error(`Unsupported SQL in all(): ${q}`);
-		};
+				}
+				if (
+				q.startsWith(
+					'SELECT id, artist_id, label, url, sort_order, created_at FROM artist_links WHERE artist_id'
+				)
+				) {
+				const [artistId] = args as [number];
+				const filtered = links
+					.filter((l) => l.artist_id === artistId)
+					.sort((a, b) => a.sort_order - b.sort_order || a.id - b.id);
+				return filtered as T[];
+				}
+				throw new Error(`Unsupported SQL in all(): ${q}`);
+				};
 
-		const runStatement = () => {
-			const q = normalized();
-			if (q.startsWith('DELETE FROM artists WHERE id')) {
+				const runStatement = () => {
+				const q = normalized();
+				if (q.startsWith('DELETE FROM artists WHERE id')) {
 				const [id] = args as [number];
 				const idx = rows.findIndex((r) => r.id === id);
 				if (idx >= 0) rows.splice(idx, 1);
 				return { success: true };
-			}
-			throw new Error(`Unsupported SQL in run(): ${q}`);
-		};
+				}
+				if (q.startsWith('DELETE FROM artist_links WHERE id')) {
+				const [id] = args as [number];
+				const idx = links.findIndex((l) => l.id === id);
+				if (idx >= 0) links.splice(idx, 1);
+				return { success: true };
+				}
+				throw new Error(`Unsupported SQL in run(): ${q}`);
+				};
 
 		const statement = {
 			bind(...values: unknown[]) {
@@ -91,10 +167,10 @@ function createFakeD1(): FakeD1 {
 		return statement;
 	};
 
-	return { prepare, _events: events } as unknown as FakeD1;
-}
+	return { prepare, _events: events, _links: links } as unknown as FakeD1;
+	}
 
-describe('artists', () => {
+	describe('artists', () => {
 	let db: D1Database;
 
 	beforeEach(() => {
@@ -163,4 +239,74 @@ describe('artists', () => {
 		await deleteArtist(db, created.id);
 		expect(await listArtists(db)).toEqual([]);
 	});
-});
+
+	it('starter uden details', async () => {
+		const created = await createArtist(db, { name: 'Faustix' });
+		expect(created.details).toBeNull();
+	});
+
+	it('gemmer og læser details', async () => {
+		const created = await createArtist(db, { name: 'Faustix' });
+		const updated = await updateArtistDetails(db, created.id, 'Lysdesigner fra Aarhus.');
+		expect(updated?.details).toBe('Lysdesigner fra Aarhus.');
+
+		const fetched = await getArtist(db, created.id);
+		expect(fetched?.details).toBe('Lysdesigner fra Aarhus.');
+	});
+
+	it('rydder details når teksten er tom', async () => {
+		const created = await createArtist(db, { name: 'Faustix' });
+		await updateArtistDetails(db, created.id, 'Noget tekst');
+		const cleared = await updateArtistDetails(db, created.id, null);
+		expect(cleared?.details).toBeNull();
+	});
+
+	it('returnerer null når details opdateres på en ukendt række', async () => {
+		expect(await updateArtistDetails(db, 999, 'tekst')).toBeNull();
+	});
+
+	it('tilføjer og lister links for en artist', async () => {
+		const created = await createArtist(db, { name: 'Faustix' });
+		await addArtistLink(db, {
+			artistId: created.id,
+			label: 'Website',
+			url: 'https://faustix.dk'
+		});
+		await addArtistLink(db, {
+			artistId: created.id,
+			label: 'Spotify',
+			url: 'https://open.spotify.com/artist/x'
+		});
+
+		const links = await listArtistLinks(db, created.id);
+		expect(links.map((l) => l.label)).toEqual(['Website', 'Spotify']);
+	});
+
+	it('holder links adskilt pr. artist', async () => {
+		const a = await createArtist(db, { name: 'A' });
+		const b = await createArtist(db, { name: 'B' });
+		await addArtistLink(db, { artistId: a.id, label: 'A-site', url: 'https://a.dk' });
+		await addArtistLink(db, { artistId: b.id, label: 'B-site', url: 'https://b.dk' });
+
+		expect((await listArtistLinks(db, a.id)).map((l) => l.label)).toEqual(['A-site']);
+		expect((await listArtistLinks(db, b.id)).map((l) => l.label)).toEqual(['B-site']);
+	});
+
+	it('fjerner et link', async () => {
+		const created = await createArtist(db, { name: 'Faustix' });
+		const link = await addArtistLink(db, {
+			artistId: created.id,
+			label: 'Website',
+			url: 'https://faustix.dk'
+		});
+
+		expect(await getArtistLink(db, link.id)).not.toBeNull();
+		await removeArtistLink(db, link.id);
+		expect(await getArtistLink(db, link.id)).toBeNull();
+		expect(await listArtistLinks(db, created.id)).toEqual([]);
+	});
+
+	it('returnerer null når et ukendt link fjernes', async () => {
+		expect(await removeArtistLink(db, 999)).toBeNull();
+	});
+	});
