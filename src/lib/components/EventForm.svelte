@@ -11,9 +11,11 @@
     | 'location'
     | 'link'
     | 'file'
-    | 'event';
+    | 'event'
+    | 'artist';
 
   type EventOption = { id: number; name: string };
+  type ArtistOption = { id: number; name: string };
 
   let {
     error,
@@ -22,6 +24,7 @@
     submitLabel = 'Create event',
     pendingLabel = 'Creating…',
     events = [],
+    artists = [],
     initial = {},
     id = null,
     requireImage = true,
@@ -33,6 +36,7 @@
     submitLabel?: string;
     pendingLabel?: string;
     events?: EventOption[];
+    artists?: ArtistOption[];
     initial?: {
       name?: string | null;
       years?: string | null;
@@ -41,6 +45,7 @@
       eventDate?: string | null;
       location?: string | null;
       link?: string | null;
+      artistId?: number | null;
     };
     id?: number | null;
     requireImage?: boolean;
@@ -160,6 +165,16 @@
       <option value="">None</option>
       {#each events as option (option.id)}
         <option value={option.id}>{option.name}</option>
+      {/each}
+    </select>
+  {/if}
+
+  {#if show('artist')}
+    <label for="artistId">Artist</label>
+    <select id="artistId" name="artistId">
+      <option value="">None</option>
+      {#each artists as option (option.id)}
+        <option value={option.id} selected={initial.artistId === option.id}>{option.name}</option>
       {/each}
     </select>
   {/if}

@@ -16,20 +16,27 @@
     description: string | null;
     details: string | null;
     link: string | null;
+    artist_id: number | null;
+    artistName: string | null;
     images: EventImage[];
   }
+
+  type ArtistOption = { id: number; name: string };
 
   let {
     event,
     owner = false,
+    artists = [],
     onclose
-  }: { event: EventData; owner?: boolean; onclose: () => void } = $props();
+  }: { event: EventData; owner?: boolean; artists?: ArtistOption[]; onclose: () => void } = $props();
 
   // The modal is mounted per event, so capturing the initial values is intentional.
   // svelte-ignore state_referenced_locally
   let name = $state(event.name);
   // svelte-ignore state_referenced_locally
   let details = $state(event.details ?? '');
+  // svelte-ignore state_referenced_locally
+  let artistId = $state(event.artist_id ? String(event.artist_id) : '');
 
   // Re-sync the editable fields only when the parent passes a genuinely new
   // saved value (e.g. after the update action re-runs the load). Comparing
@@ -39,12 +46,20 @@
   let syncedName = event.name;
   // svelte-ignore state_referenced_locally
   let syncedDetails = event.details ?? '';
+  // svelte-ignore state_referenced_locally
+  let syncedArtistId = event.artist_id;
   $effect(() => {
-    if (event.name !== syncedName || (event.details ?? '') !== syncedDetails) {
+    if (
+      event.name !== syncedName ||
+      (event.details ?? '') !== syncedDetails ||
+      event.artist_id !== syncedArtistId
+    ) {
       syncedName = event.name;
       syncedDetails = event.details ?? '';
+      syncedArtistId = event.artist_id;
       name = event.name;
       details = event.details ?? '';
+      artistId = event.artist_id ? String(event.artist_id) : '';
     }
   });
 
@@ -174,6 +189,14 @@
 
           <label for="modal-name">Name</label>
           <input id="modal-name" name="name" type="text" bind:value={name} required maxlength="200" />
+
+          <label for="modal-artist">Artist</label>
+          <select id="modal-artist" name="artistId" bind:value={artistId}>
+            <option value="">None</option>
+            {#each artists as option (option.id)}
+              <option value={String(option.id)}>{option.name}</option>
+            {/each}
+          </select>
 
           <label for="modal-description">Details</label>
           <textarea
@@ -344,6 +367,7 @@
 
   .edit-form input,
   .edit-form textarea,
+  .edit-form select,
   .add-image input {
     width: 100%;
     padding: 0.5rem 0.75rem;
@@ -358,6 +382,7 @@
 
   .edit-form input:focus,
   .edit-form textarea:focus,
+  .edit-form select:focus,
   .add-image input:focus {
     outline: none;
     border-color: var(--accent);

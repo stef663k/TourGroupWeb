@@ -90,7 +90,7 @@ function createFakeD1() {
 					const [id] = args as [number];
 					return (links.find((l) => l.id === id) ?? null) as T | null;
 				}
-				if (q.startsWith('SELECT id, slug, name, event_date, location, description, details, link, created_at FROM events WHERE id')) {
+				if (q.startsWith('SELECT id, slug, name, event_date, location, description, details, link, artist_id, created_at FROM events WHERE id')) {
 					const [id] = args as [number];
 					return (events.find((e) => e.id === id) ?? null) as T | null;
 				}

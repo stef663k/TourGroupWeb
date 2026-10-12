@@ -26,6 +26,7 @@ export interface EventRow {
 	description: string | null;
 	details: string | null;
 	link: string | null;
+	artist_id: number | null;
 	created_at: number;
 }
 
@@ -180,7 +181,7 @@ export async function deleteExpiredSessions(db: D1Database): Promise<void> {
 export async function listEvents(db: D1Database): Promise<EventRow[]> {
 	const result = await db
 		.prepare(
-			'SELECT id, slug, name, event_date, location, description, details, link, created_at FROM events ' +
+			'SELECT id, slug, name, event_date, location, description, details, link, artist_id, created_at FROM events ' +
 				'ORDER BY (event_date IS NULL), event_date DESC, id DESC'
 		)
 		.all<EventRow>();
@@ -193,15 +194,15 @@ export async function listEvents(db: D1Database): Promise<EventRow[]> {
 export async function getEvent(db: D1Database, id: number): Promise<EventRow | null> {
 	const row = await db
 		.prepare(
-			'SELECT id, slug, name, event_date, location, description, details, link, created_at FROM events WHERE id = ?1'
+			'SELECT id, slug, name, event_date, location, description, details, link, artist_id, created_at FROM events WHERE id = ?1'
 		)
 		.bind(id)
 		.first<EventRow>();
-	return row ?? null;
-}
+		return row ?? null;
+		}
 
-/**
- * Opretter et event og returnerer rækken. `slug` skal være unik;
+		/**
+		* Opretter et event og returnerer rækken. `slug` skal være unik;
  * et brud på unikhedsmæssige kast videre til kalderen.
  */
 export async function createEvent(
@@ -214,12 +215,13 @@ export async function createEvent(
 		description?: string | null;
 		details?: string | null;
 		link?: string | null;
-	}
-): Promise<EventRow> {
-	const result = await db
+		artistId?: number | null;
+		}
+		): Promise<EventRow> {
+		const result = await db
 		.prepare(
-			'INSERT INTO events (slug, name, event_date, location, description, details, link) ' +
-				'VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) RETURNING id, slug, name, event_date, location, description, details, link, created_at'
+			'INSERT INTO events (slug, name, event_date, location, description, details, link, artist_id) ' +
+				'VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8) RETURNING id, slug, name, event_date, location, description, details, link, artist_id, created_at'
 		)
 		.bind(
 			input.slug,
@@ -228,7 +230,8 @@ export async function createEvent(
 			input.location ?? null,
 			input.description ?? null,
 			input.details ?? null,
-			input.link ?? null
+			input.link ?? null,
+			input.artistId ?? null
 		)
 		.first<EventRow>();
 	if (!result) throw new Error('Could not create event.');
@@ -250,12 +253,13 @@ export async function updateEvent(
 		description?: string | null;
 		details?: string | null;
 		link?: string | null;
-	}
-): Promise<EventRow | null> {
+		artistId?: number | null;
+		}
+		): Promise<EventRow | null> {
 	const result = await db
 		.prepare(
-			'UPDATE events SET slug = ?1, name = ?2, event_date = ?3, location = ?4, description = ?5, details = ?6, link = ?7 ' +
-				'WHERE id = ?8 RETURNING id, slug, name, event_date, location, description, details, link, created_at'
+			'UPDATE events SET slug = ?1, name = ?2, event_date = ?3, location = ?4, description = ?5, details = ?6, link = ?7, artist_id = ?8 ' +
+				'WHERE id = ?9 RETURNING id, slug, name, event_date, location, description, details, link, artist_id, created_at'
 		)
 		.bind(
 			input.slug,
@@ -265,14 +269,15 @@ export async function updateEvent(
 			input.description ?? null,
 			input.details ?? null,
 			input.link ?? null,
+			input.artistId ?? null,
 			id
-		)
-		.first<EventRow>();
-	return result ?? null;
-}
+			)
+			.first<EventRow>();
+			return result ?? null;
+			}
 
-/**
- * Henter alle artists sorteret efter deres tilknyttede events dato (nyeste først).
+			/**
+			* Henter alle artists sorteret efter deres tilknyttede events dato (nyeste først).
  * Artister uden et tilknyttet event (eller hvor eventet mangler en dato) ligger
  * nederst. Ved lige datoer sorteres efter id, så rækkefølgen er stabil.
  */
@@ -300,14 +305,14 @@ export async function getArtist(db: D1Database, id: number): Promise<ArtistRow |
 
 		/**
 		* Opdaterer en artist-række og returnerer den opdaterede række.
- * Returnerer null hvis rækken ikke findes.
- */
-export async function updateArtist(
-	db: D1Database,
-	id: number,
-	input: { name: string; years?: string | null; eventId?: number | null }
-): Promise<ArtistRow | null> {
-	const result = await db
+		* Returnerer null hvis rækken ikke findes.
+		*/
+		export async function updateArtist(
+			db: D1Database,
+			id: number,
+			input: { name: string; years?: string | null; eventId?: number | null }
+		): Promise<ArtistRow | null> {
+		const result = await db
 		.prepare(
 			'UPDATE artists SET name = ?1, years = ?2, event_id = ?3 ' +
 				'WHERE id = ?4 RETURNING id, name, years, event_id, details, created_at'
@@ -319,12 +324,12 @@ export async function updateArtist(
 
 		/**
 		* Opretter en artist-række og returnerer den.
- */
-export async function createArtist(
-	db: D1Database,
-	input: { name: string; years?: string | null; eventId?: number | null }
-): Promise<ArtistRow> {
-	const result = await db
+		*/
+		export async function createArtist(
+		db: D1Database,
+		input: { name: string; years?: string | null; eventId?: number | null }
+		): Promise<ArtistRow> {
+		const result = await db
 		.prepare(
 			'INSERT INTO artists (name, years, event_id) ' +
 				'VALUES (?1, ?2, ?3) RETURNING id, name, years, event_id, details, created_at'

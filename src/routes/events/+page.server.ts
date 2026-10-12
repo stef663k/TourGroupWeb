@@ -9,7 +9,9 @@ import {
 	getEventImage,
 	updateEvent,
 	deleteEvent,
-	removeEventImage
+	removeEventImage,
+	listArtists,
+	getArtist
 } from '$lib/server/db';
 import {
 	buildImageKey,
@@ -21,9 +23,17 @@ import {
 
 export const load: PageServerLoad = async ({ platform }) => {
 	const db = platform?.env?.DB;
-	if (!db) return { events: [], imageBaseUrl: undefined };
+	if (!db) return { events: [], artists: [], imageBaseUrl: undefined };
 
 	const baseUrl = platform?.env?.R2_PUBLIC_URL;
+
+	// Artisterne hentes til "Link an artist"-vælgeren på opret/opdater-formularen.
+	let artists: Awaited<ReturnType<typeof listArtists>> = [];
+	try {
+		artists = await listArtists(db);
+	} catch (err) {
+		console.error('Kunne ikke hente artists:', err);
+	}
 
 	// Hvis databasen ikke er sat op endnu (fx manglende migrationer), må siden
 	// ikke kaste en 500. Vi logger fejlen og viser en tom liste i stedet.
@@ -32,7 +42,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 		events = await listEvents(db);
 	} catch (err) {
 		console.error('Kunne ikke hente events:', err);
-		return { events: [], imageBaseUrl: baseUrl };
+		return { events: [], artists, imageBaseUrl: baseUrl };
 	}
 
 	const withImages = await Promise.all(
@@ -43,8 +53,10 @@ export const load: PageServerLoad = async ({ platform }) => {
 			} catch (err) {
 				console.error(`Kunne ikke hente billeder for event ${event.id}:`, err);
 			}
+			const artist = artists.find((a) => a.id === event.artist_id) ?? null;
 			return {
 				...event,
+				artistName: artist?.name ?? null,
 				images: images.map((img) => ({
 					id: img.id,
 					caption: img.caption,
@@ -54,7 +66,11 @@ export const load: PageServerLoad = async ({ platform }) => {
 		})
 	);
 
-	return { events: withImages, imageBaseUrl: baseUrl };
+	return {
+		events: withImages,
+		artists: artists.map((a) => ({ id: a.id, name: a.name })),
+		imageBaseUrl: baseUrl
+	};
 };
 
 /**
@@ -65,6 +81,22 @@ export const load: PageServerLoad = async ({ platform }) => {
 async function readImageHead(file: Blob, length = 16): Promise<Uint8Array> {
 	const buffer = await file.slice(0, length).arrayBuffer();
 	return new Uint8Array(buffer);
+}
+
+/**
+ * Læser og validerer et valgfrit artist-id fra formularen. Returnerer
+ * { value } ved succes (null = ingen artist) eller { error } ved fejl.
+ */
+async function resolveArtistId(
+	db: D1Database,
+	artistIdRaw: string
+): Promise<{ value: number | null } | { error: string }> {
+	if (!artistIdRaw) return { value: null };
+	const parsed = Number(artistIdRaw);
+	if (!Number.isInteger(parsed)) return { error: 'Invalid artist.' };
+	const artist = await getArtist(db, parsed);
+	if (!artist) return { error: 'The selected artist does not exist.' };
+	return { value: parsed };
 }
 
 /**
@@ -100,6 +132,7 @@ export const actions: Actions = {
 		const location = String(data.get('location') ?? '').trim();
 		const description = String(data.get('description') ?? '').trim();
 		const link = String(data.get('link') ?? '').trim();
+		const artistIdRaw = String(data.get('artistId') ?? '').trim();
 		const file = data.get('file');
 
 		if (!name) return fail(400, { error: 'Name is required.' });
@@ -107,6 +140,9 @@ export const actions: Actions = {
 
 		const linkError = validateLink(link);
 		if (linkError) return fail(400, { error: linkError });
+
+		const artistResult = await resolveArtistId(db, artistIdRaw);
+		if ('error' in artistResult) return fail(400, { error: artistResult.error });
 
 		const slug = slugify(name) || `event-${Date.now()}`;
 
@@ -139,7 +175,8 @@ export const actions: Actions = {
 				eventDate: eventDate || null,
 				location: location || null,
 				description: description || null,
-				link: link || null
+				link: link || null,
+				artistId: artistResult.value
 			});
 		} catch (err) {
 			if (err instanceof Error && err.message.includes('UNIQUE')) {
@@ -186,6 +223,7 @@ export const actions: Actions = {
 		const description = String(data.get('description') ?? '').trim();
 		const details = String(data.get('details') ?? '').trim();
 		const link = String(data.get('link') ?? '').trim();
+		const artistIdRaw = String(data.get('artistId') ?? '').trim();
 
 		if (!name) return fail(400, { error: 'Name is required.' });
 		if (name.length > 200) return fail(400, { error: 'The name is too long.' });
@@ -196,6 +234,9 @@ export const actions: Actions = {
 		if (eventDate && !/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
 			return fail(400, { error: 'Date must be in the format YYYY-MM-DD.' });
 		}
+
+		const artistResult = await resolveArtistId(db, artistIdRaw);
+		if ('error' in artistResult) return fail(400, { error: artistResult.error });
 
 		const existing = await getEvent(db, id);
 		if (!existing) return fail(404, { error: 'The event does not exist.' });
@@ -210,7 +251,8 @@ export const actions: Actions = {
 				location: location || null,
 				description: description || null,
 				details: details || null,
-				link: link || null
+				link: link || null,
+				artistId: artistResult.value
 			});
 		} catch (err) {
 			if (err instanceof Error && err.message.includes('UNIQUE')) {

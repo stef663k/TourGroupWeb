@@ -30,7 +30,7 @@
   {:else}
     <ul class="events">
       {#each data.events as event (event.id)}
-        <EventCard {event} owner={data.owner} />
+        <EventCard {event} artists={data.artists} owner={data.owner} />
       {/each}
     </ul>
   {/if}
@@ -40,7 +40,11 @@
   <!-- 02 — Opret event (kun owner) -->
   <section>
     <div class="label">02 — Create event</div>
-    <EventForm error={form?.error} />
+    <EventForm
+      error={form?.error}
+      artists={data.artists}
+      fields={['name', 'description', 'eventDate', 'location', 'artist', 'link', 'file']}
+    />
   </section>
 {/if}
 

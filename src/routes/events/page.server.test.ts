@@ -15,6 +15,15 @@ function createFakeD1() {
 		description: string | null;
 		details: string | null;
 		link: string | null;
+		artist_id: number | null;
+		created_at: number;
+	}[] = [];
+	const artists: {
+		id: number;
+		name: string;
+		years: string | null;
+		event_id: number | null;
+		details: string | null;
 		created_at: number;
 	}[] = [];
 	const images: {
@@ -37,8 +46,15 @@ function createFakeD1() {
 				return statement;
 			},
 			async all<T>() {
-				if (q.startsWith('SELECT id, slug, name, event_date, location, description, details, link, created_at FROM events ORDER BY')) {
+				if (q.startsWith('SELECT id, slug, name, event_date, location, description, details, link, artist_id, created_at FROM events ORDER BY')) {
 					return { results: events as T[], success: true };
+				}
+				if (
+					q.startsWith(
+						'SELECT artists.id, artists.name, artists.years, artists.event_id, artists.details, artists.created_at FROM artists LEFT JOIN events'
+					)
+				) {
+					return { results: artists as T[], success: true };
 				}
 				if (
 					q.startsWith(
@@ -72,9 +88,13 @@ function createFakeD1() {
 				throw new Error(`Unsupported SQL: ${q}`);
 			},
 			async first<T>() {
-				if (q.startsWith('SELECT id, slug, name, event_date, location, description, details, link, created_at FROM events WHERE id')) {
+				if (q.startsWith('SELECT id, slug, name, event_date, location, description, details, link, artist_id, created_at FROM events WHERE id')) {
 					const [id] = args as [number];
 					return (events.find((e) => e.id === id) ?? null) as T | null;
+				}
+				if (q.startsWith('SELECT id, name, years, event_id, details, created_at FROM artists WHERE id')) {
+					const [id] = args as [number];
+					return (artists.find((a) => a.id === id) ?? null) as T | null;
 				}
 				if (
 					q.startsWith(
@@ -85,7 +105,7 @@ function createFakeD1() {
 					return (images.find((i) => i.id === id) ?? null) as T | null;
 				}
 				if (q.startsWith('UPDATE events SET')) {
-					const [slug, name, event_date, location, description, details, link, id] = args as [
+					const [slug, name, event_date, location, description, details, link, artist_id, id] = args as [
 						string,
 						string,
 						string | null,
@@ -93,6 +113,7 @@ function createFakeD1() {
 						string | null,
 						string | null,
 						string | null,
+						number | null,
 						number
 					];
 					if (events.some((e) => e.slug === slug && e.id !== id)) {
@@ -107,17 +128,19 @@ function createFakeD1() {
 					row.description = description;
 					row.details = details;
 					row.link = link;
+					row.artist_id = artist_id;
 					return row as T;
 				}
 				if (q.startsWith('INSERT INTO events')) {
-					const [slug, name, event_date, location, description, details, link] = args as [
+					const [slug, name, event_date, location, description, details, link, artist_id] = args as [
 						string,
 						string,
 						string | null,
 						string | null,
 						string | null,
 						string | null,
-						string | null
+						string | null,
+						number | null
 					];
 					if (events.some((e) => e.slug === slug)) {
 						throw new Error('UNIQUE constraint failed: events.slug');
@@ -131,6 +154,7 @@ function createFakeD1() {
 						description,
 						details,
 						link,
+						artist_id,
 						created_at: 0
 					};
 					events.push(row);
@@ -166,12 +190,26 @@ function createFakeD1() {
 		prepare,
 		_events: events,
 		_images: images,
-		_seed: (rows: typeof events, imageRows: typeof images) => {
-			events.push(...rows);
+		_artists: artists,
+		_seed: (
+			rows: Omit<(typeof events)[number], 'artist_id'>[],
+			imageRows: typeof images
+		) => {
+			events.push(...rows.map((r) => ({ ...r, artist_id: null })));
 			images.push(...imageRows);
+		},
+		_seedArtist: (row: { id: number; name: string }) => {
+			artists.push({
+				id: row.id,
+				name: row.name,
+				years: null,
+				event_id: null,
+				details: null,
+				created_at: 0
+			});
 		}
 	};
-}
+	}
 
 function makePlatform(db: unknown, r2PublicUrl?: string) {
 	return { env: { DB: db, Bucket: {}, R2_PUBLIC_URL: r2PublicUrl } } as App.Platform;
@@ -269,7 +307,13 @@ async function runRemoveEventImage(
 }
 
 type LoadResult = {
-	events: { link: string | null; images: { id: number; caption: string | null; url: string }[] }[];
+	events: {
+		link: string | null;
+		artist_id: number | null;
+		artistName: string | null;
+		images: { id: number; caption: string | null; url: string }[];
+	}[];
+	artists: { id: number; name: string }[];
 	imageBaseUrl: string | undefined;
 };
 
@@ -379,8 +423,64 @@ describe('events load', () => {
 
 		const data = await runLoad(makePlatform(db));
 		expect(data.events[0].images[0].url).toBe('/images/events/fest/x.png');
-	});
-});
+		});
+
+		it('returnerer en tom artist-liste når databasen ikke er konfigureret', async () => {
+		const data = await runLoad(undefined);
+		expect(data.artists).toEqual([]);
+		});
+
+		it('kortlægger artistens navn på eventet', async () => {
+		const db = createFakeD1();
+		db._seed(
+			[
+				{
+					id: 1,
+					slug: 'sommerfest',
+					name: 'Sommerfest',
+					event_date: null,
+					location: null,
+					description: null,
+					details: null,
+					link: null,
+					created_at: 0
+				}
+			],
+			[]
+		);
+		db._seedArtist({ id: 5, name: 'Faustix' });
+		db._events[0].artist_id = 5;
+
+		const data = await runLoad(makePlatform(db));
+		expect(data.events[0].artist_id).toBe(5);
+		expect(data.events[0].artistName).toBe('Faustix');
+		expect(data.artists).toEqual([{ id: 5, name: 'Faustix' }]);
+		});
+
+		it('lader artistName være null når ingen artist er tilknyttet', async () => {
+		const db = createFakeD1();
+		db._seed(
+			[
+				{
+					id: 1,
+					slug: 'fest',
+					name: 'Fest',
+					event_date: null,
+					location: null,
+					description: null,
+					details: null,
+					link: null,
+					created_at: 0
+				}
+			],
+			[]
+		);
+
+		const data = await runLoad(makePlatform(db));
+		expect(data.events[0].artist_id).toBeNull();
+		expect(data.events[0].artistName).toBeNull();
+		});
+		});
 
 describe('createEvent action', () => {
 	let errorSpy: ReturnType<typeof vi.spyOn>;
@@ -522,10 +622,71 @@ describe('createEvent action', () => {
 		const res = await runCreateEvent(form, platform);
 		expect(res.status).toBe(400);
 		expect(bucket._puts).not.toHaveBeenCalled();
-	});
-	});
+		});
 
-describe('deleteEvent action', () => {
+		it('gemmer en valgt artist på eventet', async () => {
+		const db = createFakeD1();
+		db._seedArtist({ id: 5, name: 'Faustix' });
+		const bucket = createFakeBucket();
+		const platform = { env: { DB: db, Bucket: bucket } } as unknown as App.Platform;
+
+		const form = new FormData();
+		form.set('name', 'Sommerfest');
+		form.set('artistId', '5');
+		form.set('file', jpegFile());
+
+		const res = await runCreateEvent(form, platform);
+		expect(res.success).toBe(true);
+		expect(db._events[0].artist_id).toBe(5);
+		});
+
+		it('behandler en tom artist som null', async () => {
+		const db = createFakeD1();
+		const bucket = createFakeBucket();
+		const platform = { env: { DB: db, Bucket: bucket } } as unknown as App.Platform;
+
+		const form = new FormData();
+		form.set('name', 'Sommerfest');
+		form.set('artistId', '');
+		form.set('file', jpegFile());
+
+		const res = await runCreateEvent(form, platform);
+		expect(res.success).toBe(true);
+		expect(db._events[0].artist_id).toBeNull();
+		});
+
+		it('afviser et artist-id der ikke findes', async () => {
+		const db = createFakeD1();
+		const bucket = createFakeBucket();
+		const platform = { env: { DB: db, Bucket: bucket } } as unknown as App.Platform;
+
+		const form = new FormData();
+		form.set('name', 'Sommerfest');
+		form.set('artistId', '999');
+		form.set('file', jpegFile());
+
+		const res = await runCreateEvent(form, platform);
+		expect(res.status).toBe(400);
+		expect(bucket._puts).not.toHaveBeenCalled();
+		});
+
+		it('afviser et ugyldigt artist-id', async () => {
+		const db = createFakeD1();
+		const bucket = createFakeBucket();
+		const platform = { env: { DB: db, Bucket: bucket } } as unknown as App.Platform;
+
+		const form = new FormData();
+		form.set('name', 'Sommerfest');
+		form.set('artistId', 'abc');
+		form.set('file', jpegFile());
+
+		const res = await runCreateEvent(form, platform);
+		expect(res.status).toBe(400);
+		expect(bucket._puts).not.toHaveBeenCalled();
+		});
+		});
+
+		describe('deleteEvent action', () => {
 	let errorSpy: ReturnType<typeof vi.spyOn>;
 
 	beforeEach(() => {
@@ -732,9 +893,42 @@ describe('deleteEvent action', () => {
 		form.set('link', 'ftp://example.com');
 		const res = await runUpdateEvent(form, makePlatform(db));
 		expect(res.status).toBe(400);
-	});
+		});
 
-	it('afviser et navn der giver en dublet-slug', async () => {
+		it('gemmer og rydder eventets artist', async () => {
+		const db = createFakeD1();
+		seed(db);
+		db._seedArtist({ id: 5, name: 'Faustix' });
+
+		const withArtist = new FormData();
+		withArtist.set('id', '1');
+		withArtist.set('name', 'Sommerfest');
+		withArtist.set('artistId', '5');
+		const res = await runUpdateEvent(withArtist, makePlatform(db));
+		expect(res.success).toBe(true);
+		expect(db._events[0].artist_id).toBe(5);
+
+		const cleared = new FormData();
+		cleared.set('id', '1');
+		cleared.set('name', 'Sommerfest');
+		cleared.set('artistId', '');
+		const res2 = await runUpdateEvent(cleared, makePlatform(db));
+		expect(res2.success).toBe(true);
+		expect(db._events[0].artist_id).toBeNull();
+		});
+
+		it('afviser et artist-id der ikke findes', async () => {
+		const db = createFakeD1();
+		seed(db);
+		const form = new FormData();
+		form.set('id', '1');
+		form.set('name', 'Sommerfest');
+		form.set('artistId', '999');
+		const res = await runUpdateEvent(form, makePlatform(db));
+		expect(res.status).toBe(400);
+		});
+
+		it('afviser et navn der giver en dublet-slug', async () => {
 		const db = createFakeD1();
 		db._seed(
 			[

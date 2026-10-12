@@ -17,10 +17,18 @@
     description: string | null;
     details: string | null;
     link: string | null;
+    artist_id: number | null;
+    artistName: string | null;
     images: EventImage[];
   }
 
-  let { event, owner = false }: { event: Event; owner?: boolean } = $props();
+  type ArtistOption = { id: number; name: string };
+
+  let {
+    event,
+    owner = false,
+    artists = []
+  }: { event: Event; owner?: boolean; artists?: ArtistOption[] } = $props();
 
   let editing = $state(false);
   let showModal = $state(false);
@@ -86,16 +94,23 @@
       </div>
     {/if}
     </div>
-    {#if event.images.length > 0 || event.description}
+    {#if event.images.length > 0 || event.description || event.artistName}
       <div class="event-body">
         {#if event.images.length > 0}
-          <ul class="images">
-            {#each event.images as image (image.id)}
-              <li>
-                <img src={image.url} alt={image.caption ?? event.name} loading="lazy" />
-              </li>
-            {/each}
-          </ul>
+          <div class="images-column">
+            <ul class="images">
+              {#each event.images as image (image.id)}
+                <li>
+                  <img src={image.url} alt={image.caption ?? event.name} loading="lazy" />
+                </li>
+              {/each}
+            </ul>
+            {#if event.artistName}
+              <p class="artist-name">{event.artistName}</p>
+            {/if}
+          </div>
+        {:else if event.artistName}
+          <p class="artist-name">{event.artistName}</p>
         {/if}
         {#if event.description}
           <p class="description">{event.description}</p>
@@ -119,14 +134,16 @@
     <div class="edit-panel">
       <EventForm
         action="?/updateEvent"
-        fields={['name', 'description', 'eventDate', 'location', 'link']}
+        fields={['name', 'description', 'eventDate', 'location', 'link', 'artist']}
         id={event.id}
+        {artists}
         initial={{
           name: event.name,
           description: event.description,
           eventDate: event.event_date,
           location: event.location,
-          link: event.link
+          link: event.link,
+          artistId: event.artist_id
         }}
         submitLabel="Save"
         pendingLabel="Saving…"
@@ -136,7 +153,7 @@
       </div>
       {/if}
       {#if showModal}
-      <EventModal {event} {owner} onclose={() => (showModal = false)} />
+      <EventModal {event} {owner} {artists} onclose={() => (showModal = false)} />
       {/if}
       </li>
 
@@ -252,10 +269,26 @@
     gap: clamp(0.75rem, 2vw, 1.5rem);
   }
 
-  .event-body .images {
+  .event-body .images-column {
     flex: 0 0 auto;
     width: clamp(6rem, 22vw, 12rem);
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .event-body .images {
+    width: 100%;
     grid-template-columns: repeat(auto-fill, minmax(4rem, 1fr));
+  }
+
+  .artist-name {
+    margin: 0;
+    color: var(--fg-muted);
+    font-size: 0.875rem;
+    letter-spacing: 0.02em;
+    text-align: center;
+    overflow-wrap: anywhere;
   }
 
   .description {
