@@ -55,18 +55,24 @@
         {#if work.event_id}
           <a class="work-link" href="/events#event-{work.event_id}">
             <span class="work-name">{work.name}</span>
-            {#if work.years}
-              <span class="work-years">{work.years}</span>
-            {/if}
-            <span class="work-arrow" aria-hidden="true">→</span>
+            <span class="work-meta">
+              {#if work.years}
+                <span class="work-years">{work.years}</span>
+              {/if}
+              <span class="work-latest" aria-hidden="true">
+                latest event
+                <span class="work-arrow">→</span>
+              </span>
+            </span>
           </a>
         {:else}
           <div class="work-link">
             <span class="work-name">{work.name}</span>
-            {#if work.years}
-              <span class="work-years">{work.years}</span>
-            {/if}
-            <span class="work-arrow" aria-hidden="true">→</span>
+            <span class="work-meta">
+              {#if work.years}
+                <span class="work-years">{work.years}</span>
+              {/if}
+            </span>
           </div>
         {/if}
         {#if data.owner}
@@ -477,7 +483,7 @@
 
   .work-link {
     display: grid;
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: 1fr auto;
     align-items: baseline;
     gap: 0.75rem;
     width: 100%;
@@ -493,9 +499,28 @@
     letter-spacing: 0.02em;
   }
 
+  .work-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.125rem;
+    text-align: right;
+  }
+
   .work-years {
     color: var(--fg-muted);
     font-size: 0.875rem;
+    white-space: nowrap;
+  }
+
+  .work-latest {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    color: var(--fg-muted);
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+    text-transform: lowercase;
     white-space: nowrap;
   }
 
