@@ -46,25 +46,30 @@ src/
 ## Owner-login
 
 Login-siden har **ingen synlig knap** i navigationen. Den nås kun via en
-**hemmelig sti**, der sættes som en Wrangler-secret (`OWNER_PATH`) og derfor
-ikke ligger i repoet:
+**hemmelig sti**, der gemmes i miljøvariablen `OWNER_PATH` og derfor ikke
+ligger i repoet. Værdien er ét top-level segment **uden ledende skråstreg**
+(fx `manage-8f3a9c2e`), og den besøges med **én** skråstreg:
 
-```bash
-wrangler secret put OWNER_PATH      # fx /manage-8f3a9c2e
+```
+https://ditdomæne/manage-8f3a9c2e
 ```
 
 Lokalt sættes den i `.dev.vars` (gitignored):
 
 ```
-OWNER_PATH=/manage-change-me
+OWNER_PATH=manage-change-me
 ```
 
-Værdien kan sættes med eller uden ledende skråstreg (`manage-8f3a9c2e` og
-`/manage-8f3a9c2e` virker begge). Den besøges altid med **én** skråstreg:
+I **produktion** sættes den som en *secret* på Cloudflare Pages-projektet
+(dette projekt deployes fra git, så værdien skal ligge i Pages' miljø, ikke i
+`.dev.vars`):
 
-```
-https://ditdomæne/manage-8f3a9c2e
-```
+- **Dashboard:** Workers & Pages → projektet → Settings → Variables and Secrets →
+  **Production** → Add → **Secret** → navn `OWNER_PATH`, værdi = din hemmelige sti.
+  Gør det samme under **Preview**, hvis preview-URL'er skal kunne bruges.
+  Kør derefter en ny deployment (fx *Retry deployment*), så værdien bindes.
+- **CLI:** `npx wrangler pages secret put OWNER_PATH` (ikke `wrangler secret put`,
+  som sætter secrets på en selvstændig Worker).
 
 Gatingen sker på serveren i `src/hooks.server.ts`: oplagte stier som `/owner`,
 `/admin` og `/login` svarer altid 404, og selve login-routen (`src/routes/[secret]`)

@@ -6,9 +6,13 @@
 #   npm run db:migrate
 #   npm run set-password "<adgangskode>" --username <navn>
 #
-# Hemmelig owner-login-sti (ét top-level segment, fx "/manage-8f3a9c2e").
-# Vælg en svær-at-gætte værdi — ikke "/admin" eller "/owner".
+# Hemmelig owner-login-sti (ét top-level segment, uden ledende skråstreg).
+# Vælg en svær-at-gætte værdi — ikke "admin" eller "owner".
 # Er den ikke sat, er owner-login deaktiveret (404).
-# Sæt den i produktion som en Wrangler-secret:
-#   wrangler secret put OWNER_PATH
-OWNER_PATH=manage-test123
+#
+# Lokalt (denne fil): udfyld med din rigtige værdi i .dev.vars.
+# I produktion sættes den som en SECRET i Cloudflare Pages:
+#   Dashboard → Workers & Pages → <projekt> → Settings → Variables and Secrets
+#   → Production → Add → Secret → navn: OWNER_PATH
+# (eller: npx wrangler pages secret put OWNER_PATH)
+OWNER_PATH=replace-me-with-a-random-value
