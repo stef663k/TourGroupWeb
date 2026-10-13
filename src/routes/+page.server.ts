@@ -4,6 +4,7 @@ import {
 	createArtist,
 	listArtists,
 	listEvents,
+	listEventImages,
 	getArtist,
 	updateArtist,
 	updateArtistDetails,
@@ -18,6 +19,7 @@ import {
 	updateCompany,
 	deleteCompany
 } from '$lib/server/db';
+import { publicImageUrl } from '$lib/server/storage';
 
 /**
  * Validerer et virksomheds-link. Tomme links er tilladt (feltet er valgfrit).
@@ -42,7 +44,10 @@ export const load: PageServerLoad = async ({ platform }) => {
 	const db = platform?.env?.DB;
 	if (!db) return { artists: [], companies: [] };
 
-	// Events hentes først, så vi kan finde hver artists nyeste event (efter dato).
+	const baseUrl = platform?.env?.R2_PUBLIC_URL;
+
+	// Events hentes først, så vi kan finde hver artists nyeste event (efter dato)
+	// og vise alle artistens events i artistmodalen.
 	// listEvents sorterer nyeste dato først, så den første kamp pr. artist er den nyeste.
 	let events: Awaited<ReturnType<typeof listEvents>> = [];
 	try {
@@ -51,11 +56,39 @@ export const load: PageServerLoad = async ({ platform }) => {
 		console.error('Kunne ikke hente events:', err);
 	}
 
+	// Berig hvert event med billeder og artistens navn, så de kan vises som
+	// EventCards i artistmodalen (samme form som events-siden bruger).
+	const artistNameById = new Map<number, string>();
+	const eventsWithImages = await Promise.all(
+		events.map(async (event) => {
+			let images: Awaited<ReturnType<typeof listEventImages>> = [];
+			try {
+				images = await listEventImages(db, event.id);
+			} catch (err) {
+				console.error(`Kunne ikke hente billeder for event ${event.id}:`, err);
+			}
+			return {
+				...event,
+				artistName: null,
+				images: images.map((img) => ({
+					id: img.id,
+					caption: img.caption,
+					url: publicImageUrl(img.r2_key, baseUrl)
+				}))
+			};
+		})
+	);
+
 	const latestEventIdByArtist = new Map<number, number>();
-	for (const event of events) {
-		if (event.artist_id !== null && !latestEventIdByArtist.has(event.artist_id)) {
+	const eventsByArtist = new Map<number, typeof eventsWithImages>();
+	for (const event of eventsWithImages) {
+		if (event.artist_id === null) continue;
+		if (!latestEventIdByArtist.has(event.artist_id)) {
 			latestEventIdByArtist.set(event.artist_id, event.id);
 		}
+		const list = eventsByArtist.get(event.artist_id) ?? [];
+		list.push(event);
+		eventsByArtist.set(event.artist_id, list);
 	}
 
 	// Hvis databasen ikke er sat op endnu (fx manglende migrationer), må siden
@@ -67,6 +100,10 @@ export const load: PageServerLoad = async ({ platform }) => {
 		console.error('Kunne ikke hente artists:', err);
 	}
 
+	for (const artist of artists) {
+		artistNameById.set(artist.id, artist.name);
+	}
+
 	const artistsWithLinks = await Promise.all(
 		artists.map(async (artist) => {
 			let links: Awaited<ReturnType<typeof listArtistLinks>> = [];
@@ -75,10 +112,15 @@ export const load: PageServerLoad = async ({ platform }) => {
 			} catch (err) {
 				console.error(`Kunne ikke hente links for artist ${artist.id}:`, err);
 			}
+			const artistEvents = (eventsByArtist.get(artist.id) ?? []).map((event) => ({
+				...event,
+				artistName: artistNameById.get(event.artist_id ?? -1) ?? null
+			}));
 			return {
 				...artist,
 				latestEventId: latestEventIdByArtist.get(artist.id) ?? null,
-				links: links.map((link) => ({ id: link.id, label: link.label, url: link.url }))
+				links: links.map((link) => ({ id: link.id, label: link.label, url: link.url })),
+				events: artistEvents
 			};
 		})
 	);

@@ -1,10 +1,30 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import EventCard from './EventCard.svelte';
 
   interface ArtistLink {
     id: number;
     label: string;
     url: string;
+  }
+
+  interface EventImage {
+    id: number;
+    caption: string | null;
+    url: string;
+  }
+
+  interface ArtistEvent {
+    id: number;
+    name: string;
+    event_date: string | null;
+    location: string | null;
+    description: string | null;
+    details: string | null;
+    link: string | null;
+    artist_id: number | null;
+    artistName: string | null;
+    images: EventImage[];
   }
 
   interface Artist {
@@ -13,6 +33,7 @@
     years: string | null;
     details: string | null;
     links: ArtistLink[];
+    events?: ArtistEvent[];
   }
 
   let {
@@ -20,6 +41,8 @@
     owner = false,
     onclose
   }: { artist: Artist; owner?: boolean; onclose: () => void } = $props();
+
+  let artistEvents = $derived(artist.events ?? []);
 
   // The modal is mounted per artist, so capturing the initial value is intentional.
   // svelte-ignore state_referenced_locally
@@ -132,6 +155,23 @@
         {:else}
           <p class="empty">No links yet.</p>
         {/if}
+
+        <!-- Artistens events vises som EventCards. De er altid skrivebeskyttede
+             her, fordi event-handlingerne (redigering/sletning) hører til
+             events-siden og ikke til forsiden, hvor modalen lever. -->
+        <div class="events-section">
+          <h3>Events</h3>
+
+          {#if artistEvents.length > 0}
+            <ul class="events">
+              {#each artistEvents as event (event.id)}
+                <EventCard {event} owner={false} />
+              {/each}
+            </ul>
+          {:else}
+            <p class="empty">No events yet.</p>
+          {/if}
+        </div>
 
         {#if owner}
           <form method="POST" action="?/addArtistLink" use:enhance class="add-link">
@@ -379,4 +419,32 @@
   .add-link button {
     align-self: flex-start;
   }
-</style>
+
+  .events-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .events-section h3 {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+
+  .events {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .events :global(.event + .event) {
+    border-top: 1px solid var(--line);
+  }
+  </style>

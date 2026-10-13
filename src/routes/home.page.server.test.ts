@@ -42,6 +42,15 @@ function createFakeD1() {
 		link: string | null;
 		created_at: number;
 	}[] = [];
+	const images: {
+		id: number;
+		event_id: number;
+		r2_key: string;
+		caption: string | null;
+		content_type: string;
+		sort_order: number;
+		created_at: number;
+	}[] = [];
 
 	const prepare = (sql: string) => {
 		let args: unknown[] = [];
@@ -154,6 +163,17 @@ function createFakeD1() {
 					if (q.startsWith('SELECT id, slug, name, event_date, location, description, details, link, artist_id, created_at FROM events ORDER BY')) {
 					return { results: events as T[], success: true };
 					}
+					if (
+						q.startsWith(
+							'SELECT id, event_id, r2_key, caption, content_type, sort_order, created_at FROM event_images WHERE event_id'
+						)
+					) {
+						const [eventId] = args as [number];
+						return {
+							results: images.filter((i) => i.event_id === eventId) as T[],
+							success: true
+						};
+					}
 				if (q.startsWith('SELECT id, name, link, created_at FROM companies ORDER BY')) {
 					const sorted = [...companies].sort((a, b) =>
 						a.name.toLowerCase().localeCompare(b.name.toLowerCase())
@@ -215,12 +235,29 @@ function createFakeD1() {
 				artist_id: event.artist_id ?? null,
 				created_at: 0
 			});
+		},
+		_seedImage: (image: {
+			id: number;
+			event_id: number;
+			r2_key: string;
+			caption?: string | null;
+		}) => {
+			images.push({
+				id: image.id,
+				event_id: image.event_id,
+				r2_key: image.r2_key,
+				caption: image.caption ?? null,
+				content_type: 'image/jpeg',
+				sort_order: 0,
+				created_at: 0
+			});
+		},
+		_images: images
+		};
 		}
-	};
-}
 
-function makePlatform(db: unknown) {
-	return { env: { DB: db } } as App.Platform;
+function makePlatform(db: unknown, r2PublicUrl?: string) {
+	return { env: { DB: db, R2_PUBLIC_URL: r2PublicUrl } } as App.Platform;
 }
 
 type ActionResult = { status?: number; error?: string; success?: boolean };
@@ -263,6 +300,14 @@ type LoadResult = {
 		details: string | null;
 		latestEventId: number | null;
 		links: { id: number; label: string; url: string }[];
+		events: {
+			id: number;
+			name: string;
+			event_date: string | null;
+			artist_id: number | null;
+			artistName: string | null;
+			images: { id: number; caption: string | null; url: string }[];
+		}[];
 	}[];
 	companies: { id: number; name: string; link: string | null }[];
 	};
@@ -345,6 +390,57 @@ describe('home load', () => {
 		});
 		const data = await runLoad(makePlatform(db));
 		expect(data.artists[0].latestEventId).toBeNull();
+	});
+
+	it('giver en tom events-liste når artisten ikke har nogen events', async () => {
+		const db = createFakeD1();
+		db._rows.push({
+			id: 1,
+			name: 'Faustix',
+			years: null,
+			details: null,
+			created_at: 0
+		});
+		const data = await runLoad(makePlatform(db));
+		expect(data.artists[0].events).toEqual([]);
+	});
+
+	it('lister alle artistens events med billeder og navn', async () => {
+		const db = createFakeD1();
+		db._rows.push({
+			id: 1,
+			name: 'Faustix',
+			years: null,
+			details: null,
+			created_at: 0
+		});
+		db._seedEvent({ id: 9, name: 'Nyeste', event_date: '2026-06-01', artist_id: 1 });
+		db._seedEvent({ id: 8, name: 'Ældre', event_date: '2024-06-01', artist_id: 1 });
+		db._seedImage({ id: 10, event_id: 9, r2_key: 'events/nyeste/a.jpg', caption: 'Scene' });
+
+		const data = await runLoad(makePlatform(db, 'https://cdn.example.com'));
+		expect(data.artists[0].events).toHaveLength(2);
+		expect(data.artists[0].events.map((e) => e.id)).toEqual([9, 8]);
+		expect(data.artists[0].events[0].artistName).toBe('Faustix');
+		expect(data.artists[0].events[0].images).toEqual([
+			{ id: 10, caption: 'Scene', url: 'https://cdn.example.com/events/nyeste/a.jpg' }
+		]);
+	});
+
+	it('udelader andre artisters events fra listen', async () => {
+		const db = createFakeD1();
+		db._rows.push(
+			{ id: 1, name: 'Faustix', years: null, details: null, created_at: 0 },
+			{ id: 2, name: 'Aqua', years: null, details: null, created_at: 0 }
+		);
+		db._seedEvent({ id: 9, name: 'Faustix-fest', event_date: '2026-06-01', artist_id: 1 });
+		db._seedEvent({ id: 8, name: 'Aqua-fest', event_date: '2026-01-01', artist_id: 2 });
+
+		const data = await runLoad(makePlatform(db));
+		const faustix = data.artists.find((a) => a.name === 'Faustix');
+		const aqua = data.artists.find((a) => a.name === 'Aqua');
+		expect(faustix?.events.map((e) => e.id)).toEqual([9]);
+		expect(aqua?.events.map((e) => e.id)).toEqual([8]);
 	});
 	});
 
