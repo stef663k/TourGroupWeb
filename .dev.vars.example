@@ -11,4 +11,4 @@
 # Er den ikke sat, er owner-login deaktiveret (404).
 # Sæt den i produktion som en Wrangler-secret:
 #   wrangler secret put OWNER_PATH
-OWNER_PATH=manage-8cda0a400fc6e6d3ca8416e7e34f686f
+OWNER_PATH=manage-test123
