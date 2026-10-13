@@ -1,5 +1,15 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { load } from './+page.server';
+
+let warnSpy: ReturnType<typeof vi.spyOn>;
+
+beforeEach(() => {
+	warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+});
+
+afterEach(() => {
+	warnSpy.mockRestore();
+});
 
 function makePlatform(ownerPath?: string) {
 	return { env: { OWNER_PATH: ownerPath } };
@@ -27,6 +37,21 @@ describe('[secret] owner-login load', () => {
 
 	it('kaster 404 ved en forkert hemmelig sti', async () => {
 		await expect(runLoad('manage-wrong', '/manage-abc')).rejects.toMatchObject({ status: 404 });
+	});
+
+	it('logger en diagnose uden at lække selve værdien', async () => {
+		await expect(runLoad('manage-wrong', '/manage-abc')).rejects.toMatchObject({ status: 404 });
+		const message = String(warnSpy.mock.calls[0]?.[0] ?? '');
+		expect(message).toContain('manage-wrong');
+		expect(message).toContain('configured');
+		// Den hemmelige værdi må ikke optræde i loggen.
+		expect(message).not.toContain('/manage-abc');
+	});
+
+	it('logger at OWNER_PATH mangler når den ikke er sat', async () => {
+		await expect(runLoad('manage-abc', undefined)).rejects.toMatchObject({ status: 404 });
+		const message = String(warnSpy.mock.calls[0]?.[0] ?? '');
+		expect(message).toContain('IS NOT SET');
 	});
 
 	it('kaster 404 for oplagte navne som admin', async () => {

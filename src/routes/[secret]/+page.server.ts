@@ -17,7 +17,13 @@ function matchesOwnerPath(secret: string, ownerPathEnv: string | undefined): boo
 }
 
 export const load: PageServerLoad = ({ params, platform, locals }) => {
+	const ownerPath = normalizeOwnerPath(platform?.env?.OWNER_PATH);
 	if (!matchesOwnerPath(params.secret, platform?.env?.OWNER_PATH)) {
+		// Log kun om stien er konfigureret og dens længde — aldrig selve værdien.
+		console.warn(
+			`[owner-login] 404 for segment "${params.secret}". ` +
+				`OWNER_PATH ${ownerPath ? `configured (length ${ownerPath.length})` : 'IS NOT SET'}.`
+		);
 		// Ukendt sti: opfør dig som enhver anden ikke-eksisterende side.
 		error(404, 'Not Found');
 	}
