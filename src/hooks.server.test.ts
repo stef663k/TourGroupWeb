@@ -76,4 +76,28 @@ describe('handle — owner-gating', () => {
 		await handle({ event, resolve } as never);
 		expect(event.locals.owner).toBe(false);
 	});
-});
+
+	it('samler en ledende dobbelt-skråstreg til én og omdirigerer (308)', async () => {
+		const event = makeEvent('//manage-abc', { platform: platform('/manage-abc') });
+		const resolve = makeResolve();
+		const response = await handle({ event, resolve } as never);
+		expect(response.status).toBe(308);
+		expect(response.headers.get('location')).toBe('/manage-abc');
+		expect(resolve).not.toHaveBeenCalled();
+	});
+
+	it('bevarer query-streng ved samling af dobbelt-skråstreg', async () => {
+		const event = makeEvent('//manage-abc?x=1', { platform: platform('/manage-abc') });
+		const resolve = makeResolve();
+		const response = await handle({ event, resolve } as never);
+		expect(response.headers.get('location')).toBe('/manage-abc?x=1');
+	});
+
+	it('omdirigerer også "///manage-abc" til én skråstreg', async () => {
+		const event = makeEvent('///manage-abc', { platform: platform('/manage-abc') });
+		const resolve = makeResolve();
+		const response = await handle({ event, resolve } as never);
+		expect(response.status).toBe(308);
+		expect(response.headers.get('location')).toBe('/manage-abc');
+	});
+	});

@@ -18,6 +18,18 @@ export const handle: Handle = async ({ event, resolve }) => {
 	// Gør den normaliserede owner-sti tilgængelig for resten af requesten.
 	event.locals.ownerPath = normalizeOwnerPath(event.platform?.env?.OWNER_PATH);
 
+	// Hvis OWNER_PATH indeholder en ledende skråstreg og man kopierer den
+	// direkte ind i adresselinjen, kan man ende med "//manage-xyz". Så matcher
+	// den dynamiske route ikke (tomt første-segment), og man får et 404 fra
+	// routeren. Vi samler stien til én skråstreg og omdirigerer.
+	if (event.url.pathname.startsWith('//')) {
+		const collapsed = event.url.pathname.replace(/^\/+/, '/');
+		return new Response(null, {
+			status: 308,
+			headers: { location: collapsed + event.url.search }
+		});
+	}
+
 	// Auth er gate't her på serveren: oplagte owner-stier svarer 404, uanset om
 	// der findes en route. Selve login-siden ligger på den hemmelige sti
 	// (OWNER_PATH) og valideres derudover i routens load/action.

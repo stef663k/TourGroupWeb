@@ -59,10 +59,19 @@ Lokalt sættes den i `.dev.vars` (gitignored):
 OWNER_PATH=/manage-change-me
 ```
 
+Værdien kan sættes med eller uden ledende skråstreg (`manage-8f3a9c2e` og
+`/manage-8f3a9c2e` virker begge). Den besøges altid med **én** skråstreg:
+
+```
+https://ditdomæne/manage-8f3a9c2e
+```
+
 Gatingen sker på serveren i `src/hooks.server.ts`: oplagte stier som `/owner`,
 `/admin` og `/login` svarer altid 404, og selve login-routen (`src/routes/[secret]`)
-validerer den hemmelige sti i sin `load` og `action`. Er `OWNER_PATH` ikke sat,
-er owner-login deaktiveret helt (404).
+validerer den hemmelige sti i sin `load` og `action`. En ledende dobbelt-skråstreg
+(`//manage-8f3a9c2e`, fx hvis stien kopieres direkte fra `OWNER_PATH` med
+skråstreg ind i adresselinjen) samles automatisk til én og omdirigeres, så den
+giver ikke 404. Er `OWNER_PATH` ikke sat, er owner-login deaktiveret helt (404).
 
 Der er **kun én bruger** (owner) med et brugernavn og en adgangskode. Adgangskoden gemmes **aldrig** i klartekst — kun som et PBKDF2-hash i `users`-tabellen i **D1** (Cloudflare SQL-database, binding `DB`). Sessioner gemmes ligeledes i D1.
 
