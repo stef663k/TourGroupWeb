@@ -5,3 +5,10 @@
 # Kør migrationer og sæt brugernavn + adgangskode:
 #   npm run db:migrate
 #   npm run set-password "<adgangskode>" --username <navn>
+#
+# Hemmelig owner-login-sti (ét top-level segment, fx "/manage-8f3a9c2e").
+# Vælg en svær-at-gætte værdi — ikke "/admin" eller "/owner".
+# Er den ikke sat, er owner-login deaktiveret (404).
+# Sæt den i produktion som en Wrangler-secret:
+#   wrangler secret put OWNER_PATH
+OWNER_PATH=/manage-8cda0a400fc6e6d3ca8416e7e34f686f

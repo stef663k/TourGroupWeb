@@ -1,9 +1,26 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { verifyOwnerPassword, createSession } from '$lib/server/db';
 import { SESSION_COOKIE_NAME, SESSION_TTL_SECONDS } from '$lib/server/session';
+import { normalizeOwnerPath } from '$lib/server/owner-path';
 
-export const load: PageServerLoad = ({ locals }) => {
+/**
+ * Er den besøgte sti den konfigurerede hemmelige owner-login-sti?
+ * Stien kommer fra Wrangler-secret `OWNER_PATH` og må ikke ende i repoet.
+ */
+function matchesOwnerPath(secret: string, ownerPathEnv: string | undefined): boolean {
+	const ownerPath = normalizeOwnerPath(ownerPathEnv);
+	if (!ownerPath) return false;
+	// `normalizeOwnerPath` giver en absolut sti ("/manage-abc") og `secret`
+	// er ét enkelt segment ("manage-abc"), så vi sammenligner uden skråstreg.
+	return secret === ownerPath.replace(/^\//, '');
+}
+
+export const load: PageServerLoad = ({ params, platform, locals }) => {
+	if (!matchesOwnerPath(params.secret, platform?.env?.OWNER_PATH)) {
+		// Ukendt sti: opfør dig som enhver anden ikke-eksisterende side.
+		error(404, 'Not Found');
+	}
 	if (locals.owner) {
 		redirect(303, '/');
 	}
@@ -11,7 +28,11 @@ export const load: PageServerLoad = ({ locals }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, cookies, platform, locals }) => {
+	default: async ({ request, cookies, platform, locals, params }) => {
+		if (!matchesOwnerPath(params.secret, platform?.env?.OWNER_PATH)) {
+			return fail(404, { error: 'Not found.' });
+		}
+
 		const data = await request.formData();
 		const password = String(data.get('password') ?? '');
 

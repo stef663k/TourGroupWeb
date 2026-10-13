@@ -33,7 +33,7 @@ src/
     ├── +page.svelte         → /
     ├── +layout.svelte       → shared layout (nav, footer, cookie banner)
     ├── +layout.server.ts    → giver owner-status videre til layoutet
-    ├── owner/               → /owner (skjult owner-login, ingen link i nav)
+    ├── [secret]/            → hemmelig owner-login (sti fra OWNER_PATH)
     ├── logout/              → /logout
     ├── events/
     │   └── +page.svelte     → /events
@@ -44,6 +44,25 @@ src/
 ```
 
 ## Owner-login
+
+Login-siden har **ingen synlig knap** i navigationen. Den nås kun via en
+**hemmelig sti**, der sættes som en Wrangler-secret (`OWNER_PATH`) og derfor
+ikke ligger i repoet:
+
+```bash
+wrangler secret put OWNER_PATH      # fx /manage-8f3a9c2e
+```
+
+Lokalt sættes den i `.dev.vars` (gitignored):
+
+```
+OWNER_PATH=/manage-change-me
+```
+
+Gatingen sker på serveren i `src/hooks.server.ts`: oplagte stier som `/owner`,
+`/admin` og `/login` svarer altid 404, og selve login-routen (`src/routes/[secret]`)
+validerer den hemmelige sti i sin `load` og `action`. Er `OWNER_PATH` ikke sat,
+er owner-login deaktiveret helt (404).
 
 Der er **kun én bruger** (owner) med et brugernavn og en adgangskode. Adgangskoden gemmes **aldrig** i klartekst — kun som et PBKDF2-hash i `users`-tabellen i **D1** (Cloudflare SQL-database, binding `DB`). Sessioner gemmes ligeledes i D1.
 
