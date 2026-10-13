@@ -33,7 +33,7 @@ src/
     ├── +page.svelte         → /
     ├── +layout.svelte       → shared layout (nav, footer, cookie banner)
     ├── +layout.server.ts    → giver owner-status videre til layoutet
-    ├── login/               → /login (owner-login)
+    ├── owner/               → /owner (skjult owner-login, ingen link i nav)
     ├── logout/              → /logout
     ├── events/
     │   └── +page.svelte     → /events

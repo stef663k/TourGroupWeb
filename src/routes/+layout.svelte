@@ -41,15 +41,13 @@
 		<li><a href="/events" onclick={closeMenu}>Events</a></li>
 		<li><a href="/om" onclick={closeMenu}>About</a></li>
 		<li><a href="/kontakt" onclick={closeMenu}>Contact</a></li>
-		<li>
-			{#if data.owner}
+		{#if data.owner}
+			<li>
 				<form method="POST" action="/logout" onsubmit={closeMenu}>
 					<button type="submit">Log out</button>
 				</form>
-			{:else}
-				<a href="/login" onclick={closeMenu}>Log in</a>
-			{/if}
-		</li>
+			</li>
+		{/if}
 	</ul>
 </nav>
 

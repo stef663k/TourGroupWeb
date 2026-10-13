@@ -22,18 +22,18 @@ export const actions: Actions = {
 		const db = platform?.env?.DB;
 		if (!db) {
 			return fail(500, { error: 'Login is not configured correctly on the server.' });
-			}
+		}
 
-			let ok: boolean;
-			try {
+		let ok: boolean;
+		try {
 			ok = await verifyOwnerPassword(db, password);
-			} catch (err) {
+		} catch (err) {
 			console.error('Login fejlede:', err);
 			return fail(500, { error: 'Login is not configured correctly on the server.' });
-			}
-			if (!ok) {
+		}
+		if (!ok) {
 			return fail(400, { error: 'Incorrect password.' });
-			}
+		}
 
 		let sessionId: string;
 		try {

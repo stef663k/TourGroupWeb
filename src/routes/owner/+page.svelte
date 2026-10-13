@@ -7,13 +7,13 @@
 </script>
 
 <svelte:head>
-	<title>Log in – Tour Group</title>
-	<meta name="description" content="Log in to manage Tour Group." />
+	<title>Tour Group</title>
+	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
 <!-- Hero -->
 <section class="hero">
-	<div class="label">Owner · Login</div>
+	<div class="label">Owner</div>
 	<h1>Log in</h1>
 	<p class="lead">Log in to manage events.</p>
 </section>

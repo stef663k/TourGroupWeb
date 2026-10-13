@@ -156,23 +156,6 @@
           <p class="empty">No links yet.</p>
         {/if}
 
-        <!-- Artistens events vises som EventCards. De er altid skrivebeskyttede
-             her, fordi event-handlingerne (redigering/sletning) hører til
-             events-siden og ikke til forsiden, hvor modalen lever. -->
-        <div class="events-section">
-          <h3>Events</h3>
-
-          {#if artistEvents.length > 0}
-            <ul class="events">
-              {#each artistEvents as event (event.id)}
-                <EventCard {event} owner={false} />
-              {/each}
-            </ul>
-          {:else}
-            <p class="empty">No events yet.</p>
-          {/if}
-        </div>
-
         {#if owner}
           <form method="POST" action="?/addArtistLink" use:enhance class="add-link">
             <input type="hidden" name="id" value={artist.id} />
@@ -197,6 +180,23 @@
 
             <button type="submit" class="save">Add link</button>
           </form>
+        {/if}
+      </div>
+
+      <!-- Artistens events vises som EventCards. De er altid skrivebeskyttede
+           her, fordi event-handlingerne (redigering/sletning) hører til
+           events-siden og ikke til forsiden, hvor modalen lever. -->
+      <div class="events-section">
+        <h3>Events</h3>
+
+        {#if artistEvents.length > 0}
+          <ul class="events">
+            {#each artistEvents as event (event.id)}
+              <EventCard {event} owner={false} />
+            {/each}
+          </ul>
+        {:else}
+          <p class="empty">No events yet.</p>
         {/if}
       </div>
     </div>
@@ -447,4 +447,4 @@
   .events :global(.event + .event) {
     border-top: 1px solid var(--line);
   }
-  </style>
+</style>
