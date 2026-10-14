@@ -63,14 +63,14 @@
     margin: 0 auto;
     border-top: 1px solid var(--line);
     border-bottom: 1px solid var(--line);
-  }
+    }
 
-  /* Giv event-listen mere plads på alt undtagen mobil. */
-  @media (min-width: 641px) {
+    /* Giv event-listen mere plads på alt undtagen mobil. */
+    @media (min-width: 641px) {
     .events {
       max-width: 56rem;
     }
-  }
+    }
 
   .events :global(.event + .event) {
     border-top: 1px solid var(--line);

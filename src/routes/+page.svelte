@@ -284,7 +284,7 @@
   .hero-logo {
     display: block;
     width: 100%;
-    max-width: 28rem;
+    max-width: 34rem;
     height: auto;
     margin-inline: auto;
   }
@@ -301,7 +301,7 @@
     align-items: center;
     gap: 0;
     width: 100%;
-    max-width: 32rem;
+    max-width: var(--content-width);
     margin: 0 auto;
     border-top: 1px solid var(--line);
     border-bottom: 1px solid var(--line);
@@ -546,7 +546,7 @@
     align-items: center;
     gap: 0;
     width: 100%;
-    max-width: 32rem;
+    max-width: var(--content-width);
     margin: 0 auto;
     border-top: 1px solid var(--line);
     border-bottom: 1px solid var(--line);
@@ -647,7 +647,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    max-width: 32rem;
+    max-width: var(--content-width);
     margin: 0 auto;
     padding: clamp(0.75rem, 2vw, 1rem);
     text-align: left;
