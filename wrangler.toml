@@ -13,10 +13,3 @@ migrations_dir = "migrations"
 binding = "Bucket"
 bucket_name = "tourgroup-images"
 
-[[ratelimits]]
-name = "LOGIN_RATE_LIMITER"
-namespace_id = "1001" # Unikt positivt heltal — vælg dit eget, må ikke være i citationstegn
-
-  [ratelimits.simple]
-  limit = 10       # Tillad 10 forsøg...
-  period = 60      # ...inden for 60 sekunder

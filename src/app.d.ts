@@ -13,10 +13,6 @@ declare global {
 				 * er owner-login deaktiveret.
 				 */
 				OWNER_PATH?: string;
-				/**
-				 * Cloudflare rate limiting-binding for owner-login (se `[[ratelimits]]` i wrangler.toml).
-				 */
-				LOGIN_RATE_LIMITER: RateLimit;
 				};
 			context: ExecutionContext;
 			caches: CacheStorage;

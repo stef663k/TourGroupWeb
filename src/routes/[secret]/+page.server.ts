@@ -3,6 +3,11 @@ import type { Actions, PageServerLoad } from './$types';
 import { verifyOwnerPassword, createSession } from '$lib/server/db';
 import { SESSION_COOKIE_NAME, SESSION_TTL_SECONDS } from '$lib/server/session';
 import { normalizeOwnerPath } from '$lib/server/owner-path';
+import { checkRateLimit } from '$lib/server/rate-limit';
+
+/** Maks antal login-forsøg pr. IP inden for vindue-sekunder. */
+const LOGIN_LIMIT = 10;
+const LOGIN_WINDOW_SECONDS = 60;
 
 /**
  * Er den besøgte sti den konfigurerede hemmelige owner-login-sti?
@@ -35,25 +40,31 @@ export const load: PageServerLoad = ({ params, platform, locals }) => {
 
 export const actions: Actions = {
 	default: async ({ request, cookies, platform, locals, params }) => {
-		const limiter = platform?.env?.LOGIN_RATE_LIMITER;
-		if (!limiter) {
-			console.error('[owner-login] LOGIN_RATE_LIMITER er ikke konfigureret.');
+		// Rate limiting tælles i databasen, så vi slår den op først.
+		const db = platform?.env?.DB;
+		if (!db) {
+			console.error('[owner-login] DB-binding mangler.');
 			return fail(500, { error: 'Login is not configured correctly on the server.' });
 		}
 
-		// Cloudflare sætter klientens IP i `CF-Connecting-IP`.
-		const ip = request.headers.get('CF-Connecting-IP');
-		if(!ip){
-			console.error('[owner-login] missing CF-Connection IP');
-			return fail(500, {error: "Login is not configured correct on the server"});
+		// Cloudflare sætter klientens IP i `CF-Connecting-IP`. Mangler den
+		// (fx lokalt under `vite dev`), falder vi tilbage til en fast nøgle, så
+		// login stadig virker — det påvirker kun dev, ikke produktion.
+		const ip = request.headers.get('CF-Connecting-IP') ?? 'local-dev';
+
+		try {
+			const { success } = await checkRateLimit(db, ip, LOGIN_LIMIT, LOGIN_WINDOW_SECONDS);
+			if (!success) {
+				// 429 skal kastes (error), så requesten afbrydes med en rigtig HTTP-status.
+				throw error(429, 'Too many login attempts, please try again in a minute');
+			}
+		} catch (err) {
+			// Genkast SvelteKit-fejl (fx 429); log og fejl ellers pænt.
+			if (err && typeof err === 'object' && 'status' in err) throw err;
+			console.error('[owner-login] rate limit-tjek fejlede:', err);
+			return fail(500, { error: 'Login is not configured correctly on the server.' });
 		}
 
-		const { success } = await limiter.limit({ key: ip });
-
-
-		if (!success) {
-			throw error(429, 'Too many login attempt, please try again in a minute');
-		}
 		if (!matchesOwnerPath(params.secret, platform?.env?.OWNER_PATH)) {
 			return fail(404, { error: 'Not found.' });
 		}
@@ -63,11 +74,6 @@ export const actions: Actions = {
 
 		if (!password) {
 			return fail(400, { error: 'Please enter a password.' });
-		}
-
-		const db = platform?.env?.DB;
-		if (!db) {
-			return fail(500, { error: 'Login is not configured correctly on the server.' });
 		}
 
 		let ok: boolean;

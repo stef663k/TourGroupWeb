@@ -72,55 +72,85 @@ describe('[secret] owner-login load', () => {
 			location: '/'
 		});
 	});
-	});
+});
 
-	type ActionInput = {
+/**
+ * Minimal in-memory D1-stub der kun understøtter den SQL som
+ * `checkRateLimit` bruger (login_attempts-tabellen).
+ */
+function createFakeRateLimitDb(): D1Database {
+	const attempts = new Map<string, number>(); // key -> count (kun ét aktivt vindue)
+
+	const prepare = (sql: string) => {
+		let args: unknown[] = [];
+		const q = sql.replace(/\s+/g, ' ').trim();
+
+		const statement = {
+			bind(...values: unknown[]) {
+				args = values;
+				return statement;
+			},
+			async first<T>() {
+				if (q.startsWith('INSERT INTO login_attempts')) {
+					const [key] = args as [string, number];
+					const next = (attempts.get(key) ?? 0) + 1;
+					attempts.set(key, next);
+					return { attempts: next } as T;
+				}
+				throw new Error(`Unsupported SQL in first(): ${q}`);
+			},
+			async run() {
+				if (q.startsWith('DELETE FROM login_attempts')) {
+					return { success: true };
+				}
+				throw new Error(`Unsupported SQL in run(): ${q}`);
+			}
+		};
+		return statement;
+	};
+
+	return { prepare } as unknown as D1Database;
+}
+
+type ActionInput = {
 	request: Request;
 	cookies: { set: ReturnType<typeof vi.fn> };
 	platform: unknown;
 	locals: { owner: boolean; ownerPath: string | null };
 	params: { secret: string };
-	};
+};
 
-	type RateLimiter = { limit: ReturnType<typeof vi.fn> };
-
-	function makeRateLimiter(success: boolean): RateLimiter {
-		return { limit: vi.fn(async () => ({ success })) };
-	}
-
-	async function runAction(opts: {
+async function runAction(opts: {
 	secret?: string;
 	ownerPath?: string;
 	ip?: string;
-	limitSuccess?: boolean;
-	limiter?: RateLimiter;
+	db?: D1Database;
 	password?: string;
-	}) {
+}) {
 	const headers = new Headers();
 	if (opts.ip) headers.set('CF-Connecting-IP', opts.ip);
 
 	const body = new FormData();
 	if (opts.password !== undefined) body.set('password', opts.password);
 
-	const limiter: RateLimiter = opts.limiter ?? makeRateLimiter(opts.limitSuccess ?? true);
+	const db = opts.db ?? createFakeRateLimitDb();
 	const input: ActionInput = {
 		request: new Request('https://example.com/login', { method: 'POST', headers, body }),
 		cookies: { set: vi.fn() },
 		platform: {
 			env: {
-				LOGIN_RATE_LIMITER: limiter,
 				OWNER_PATH: opts.ownerPath ?? '/manage-abc',
-				DB: {}
+				DB: db
 			}
 		},
 		locals: { owner: false, ownerPath: null },
 		params: { secret: opts.secret ?? 'manage-abc' }
 	};
-	return { result: await actions.default(input as never), limiter, input };
-	}
+	return { result: await actions.default(input as never), db, input };
+}
 
-	describe('[secret] owner-login action — rate limit', () => {
-	it('returnerer 500 når LOGIN_RATE_LIMITER mangler', async () => {
+describe('[secret] owner-login action — input-validering', () => {
+	it('returnerer 500 når DB-bindingen mangler', async () => {
 		const input: ActionInput = {
 			request: new Request('https://example.com/login', { method: 'POST', body: new FormData() }),
 			cookies: { set: vi.fn() },
@@ -132,26 +162,54 @@ describe('[secret] owner-login load', () => {
 		expect(result).toMatchObject({ status: 500 });
 	});
 
-	it('bruger CF-Connecting-IP som nøgle', async () => {
-		const { limiter } = await runAction({ ip: '1.2.3.4', password: '' });
-		expect(limiter.limit).toHaveBeenCalledWith({ key: '1.2.3.4' });
+	it('afviser en forkert hemmelig sti med 404', async () => {
+		const { result } = await runAction({ secret: 'manage-wrong' });
+		expect(result).toMatchObject({ status: 404 });
 	});
 
-	it('returnerer 500 uden CF-Connecting-IP header (fails closed)', async () => {
-		const { result, limiter } = await runAction({ password: '' });
-		expect(result).toMatchObject({ status: 500 });
-		expect(limiter.limit).not.toHaveBeenCalled();
+	it('afviser et tomt password med 400', async () => {
+		const { result } = await runAction({ password: '' });
+		expect(result).toMatchObject({ status: 400 });
+	});
+});
+
+describe('[secret] owner-login action — rate limit', () => {
+	it('bruger CF-Connecting-IP som nøgle (tæller stiger pr. IP)', async () => {
+		const db = createFakeRateLimitDb();
+		// Samme IP to gange: andet forsøg må ikke blive blokeret (grænse er 10).
+		const first = await runAction({ ip: '1.2.3.4', password: '', db });
+		const second = await runAction({ ip: '1.2.3.4', password: '', db });
+		expect(first.result).toMatchObject({ status: 400 });
+		expect(second.result).toMatchObject({ status: 400 });
 	});
 
-	it('kaster 429 når rate limit er overskredet', async () => {
-		await expect(runAction({ ip: '9.9.9.9', limitSuccess: false })).rejects.toMatchObject({
+	it('kaster 429 når grænsen (10) er overskredet for samme IP', async () => {
+		const db = createFakeRateLimitDb();
+		// De første 10 forsøg teller; det 11. skal blokeres.
+		for (let i = 0; i < 10; i++) {
+			await runAction({ ip: '9.9.9.9', password: '', db });
+		}
+		await expect(runAction({ ip: '9.9.9.9', password: 'secret', db })).rejects.toMatchObject({
 			status: 429
 		});
 	});
 
-	it('foretager ikke login-forsøg når rate limit er overskredet', async () => {
-		await expect(
-			runAction({ ip: '9.9.9.9', limitSuccess: false, password: 'secret' })
-		).rejects.toMatchObject({ status: 429 });
+	it('forskellige IPer deler ikke tæller', async () => {
+		const db = createFakeRateLimitDb();
+		for (let i = 0; i < 10; i++) {
+			await runAction({ ip: '1.1.1.1', password: '', db });
+		}
+		// En anden IP har sin egen tæller og skal stadig kunne forsøge.
+		await expect(runAction({ ip: '2.2.2.2', password: '' })).resolves.toBeDefined();
+
+		const { result } = await runAction({ ip: '2.2.2.2', password: '', db });
+		expect(result).toMatchObject({ status: 400 });
 	});
+
+	it('falder tilbage til en fast nøgle uden CF-Connecting-IP header', async () => {
+		const db = createFakeRateLimitDb();
+		// Uden header bruges "local-dev", så login stadig virker i dev.
+		const { result } = await runAction({ password: '', db });
+		expect(result).toMatchObject({ status: 400 });
 	});
+});
