@@ -43,7 +43,7 @@ export const actions: Actions = {
 		// Rate limiting tælles i databasen, så vi slår den op først.
 		const db = platform?.env?.DB;
 		if (!db) {
-			console.error('[owner-login] DB-binding mangler.');
+			console.error('[owner-login] DB-binding mangler (platform.env.DB er ikke sat).');
 			return fail(500, { error: 'Login is not configured correctly on the server.' });
 		}
 
@@ -61,7 +61,10 @@ export const actions: Actions = {
 		} catch (err) {
 			// Genkast SvelteKit-fejl (fx 429); log og fejl ellers pænt.
 			if (err && typeof err === 'object' && 'status' in err) throw err;
-			console.error('[owner-login] rate limit-tjek fejlede:', err);
+			console.error(
+				'[owner-login] rate limit-tjek fejlede (findes login_attempts-tabellen? er migration 0013 kørt remote?):',
+				err
+			);
 			return fail(500, { error: 'Login is not configured correctly on the server.' });
 		}
 
@@ -80,7 +83,7 @@ export const actions: Actions = {
 		try {
 			ok = await verifyOwnerPassword(db, password);
 		} catch (err) {
-			console.error('Login fejlede:', err);
+			console.error('[owner-login] verifyOwnerPassword fejlede (findes users-tabellen/owner-rækken?):', err);
 			return fail(500, { error: 'Login is not configured correctly on the server.' });
 		}
 		if (!ok) {
