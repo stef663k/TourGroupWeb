@@ -35,6 +35,25 @@ export const load: PageServerLoad = ({ params, platform, locals }) => {
 
 export const actions: Actions = {
 	default: async ({ request, cookies, platform, locals, params }) => {
+		const limiter = platform?.env?.LOGIN_RATE_LIMITER;
+		if (!limiter) {
+			console.error('[owner-login] LOGIN_RATE_LIMITER er ikke konfigureret.');
+			return fail(500, { error: 'Login is not configured correctly on the server.' });
+		}
+
+		// Cloudflare sætter klientens IP i `CF-Connecting-IP`.
+		const ip = request.headers.get('CF-Connecting-IP');
+		if(!ip){
+			console.error('[owner-login] missing CF-Connection IP');
+			return fail(500, {error: "Login is not configured correct on the server"});
+		}
+
+		const { success } = await limiter.limit({ key: ip });
+
+
+		if (!success) {
+			throw error(429, 'Too many login attempt, please try again in a minute');
+		}
 		if (!matchesOwnerPath(params.secret, platform?.env?.OWNER_PATH)) {
 			return fail(404, { error: 'Not found.' });
 		}

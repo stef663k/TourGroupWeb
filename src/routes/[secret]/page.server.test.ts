@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { load } from './+page.server';
+import { actions, load } from './+page.server';
 
 let warnSpy: ReturnType<typeof vi.spyOn>;
 
@@ -72,4 +72,86 @@ describe('[secret] owner-login load', () => {
 			location: '/'
 		});
 	});
-});
+	});
+
+	type ActionInput = {
+	request: Request;
+	cookies: { set: ReturnType<typeof vi.fn> };
+	platform: unknown;
+	locals: { owner: boolean; ownerPath: string | null };
+	params: { secret: string };
+	};
+
+	type RateLimiter = { limit: ReturnType<typeof vi.fn> };
+
+	function makeRateLimiter(success: boolean): RateLimiter {
+		return { limit: vi.fn(async () => ({ success })) };
+	}
+
+	async function runAction(opts: {
+	secret?: string;
+	ownerPath?: string;
+	ip?: string;
+	limitSuccess?: boolean;
+	limiter?: RateLimiter;
+	password?: string;
+	}) {
+	const headers = new Headers();
+	if (opts.ip) headers.set('CF-Connecting-IP', opts.ip);
+
+	const body = new FormData();
+	if (opts.password !== undefined) body.set('password', opts.password);
+
+	const limiter: RateLimiter = opts.limiter ?? makeRateLimiter(opts.limitSuccess ?? true);
+	const input: ActionInput = {
+		request: new Request('https://example.com/login', { method: 'POST', headers, body }),
+		cookies: { set: vi.fn() },
+		platform: {
+			env: {
+				LOGIN_RATE_LIMITER: limiter,
+				OWNER_PATH: opts.ownerPath ?? '/manage-abc',
+				DB: {}
+			}
+		},
+		locals: { owner: false, ownerPath: null },
+		params: { secret: opts.secret ?? 'manage-abc' }
+	};
+	return { result: await actions.default(input as never), limiter, input };
+	}
+
+	describe('[secret] owner-login action — rate limit', () => {
+	it('returnerer 500 når LOGIN_RATE_LIMITER mangler', async () => {
+		const input: ActionInput = {
+			request: new Request('https://example.com/login', { method: 'POST', body: new FormData() }),
+			cookies: { set: vi.fn() },
+			platform: { env: { OWNER_PATH: '/manage-abc' } },
+			locals: { owner: false, ownerPath: null },
+			params: { secret: 'manage-abc' }
+		};
+		const result = await actions.default(input as never);
+		expect(result).toMatchObject({ status: 500 });
+	});
+
+	it('bruger CF-Connecting-IP som nøgle', async () => {
+		const { limiter } = await runAction({ ip: '1.2.3.4', password: '' });
+		expect(limiter.limit).toHaveBeenCalledWith({ key: '1.2.3.4' });
+	});
+
+	it('returnerer 500 uden CF-Connecting-IP header (fails closed)', async () => {
+		const { result, limiter } = await runAction({ password: '' });
+		expect(result).toMatchObject({ status: 500 });
+		expect(limiter.limit).not.toHaveBeenCalled();
+	});
+
+	it('kaster 429 når rate limit er overskredet', async () => {
+		await expect(runAction({ ip: '9.9.9.9', limitSuccess: false })).rejects.toMatchObject({
+			status: 429
+		});
+	});
+
+	it('foretager ikke login-forsøg når rate limit er overskredet', async () => {
+		await expect(
+			runAction({ ip: '9.9.9.9', limitSuccess: false, password: 'secret' })
+		).rejects.toMatchObject({ status: 429 });
+	});
+	});

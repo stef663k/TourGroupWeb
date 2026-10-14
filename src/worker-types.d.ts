@@ -86,6 +86,24 @@ interface R2ListOptions {
 	include?: ('httpMetadata' | 'customMetadata')[];
 }
 
+/**
+ * Minimale Cloudflare Rate Limiting-typer.
+ *
+ * Samme princip som D1- og R2-typerne: vi erklærer kun den del af API'et som
+ * projektet bruger, så vi kan type-checke uden `@cloudflare/workers-types`.
+ */
+interface RateLimitOptions {
+	key: string;
+}
+
+interface RateLimitOutcome {
+	success: boolean;
+}
+
+interface RateLimit {
+	limit(options: RateLimitOptions): Promise<RateLimitOutcome>;
+}
+
 interface R2Bucket {
 	head(key: string): Promise<R2Object | null>;
 	get(key: string): Promise<R2ObjectBody | null>;
