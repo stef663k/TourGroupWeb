@@ -42,6 +42,11 @@
 <!-- Hero -->
 <section class="hero">
   <div class="label">Lighting for events</div>
+  <h1>
+    <span class="hero-logo-crop">
+      <img class="hero-logo" src={data.logoUrl} alt="Tour Group" />
+    </span>
+  </h1>
   <p class="lead">Coming soon</p>
 </section>
 
@@ -278,11 +283,15 @@
 {/if}
 
 <style>
+  .hero-logo-crop {
     display: block;
     width: 100%;
     max-width: 48rem;
     margin-inline: auto;
     overflow: hidden;
+    /* Skalerer logoet op og klipper den tomme transparente kant væk.
+       Justér --logo-zoom indtil kanten er væk. */
+    --logo-zoom: 1.25;
     aspect-ratio: 1 / 1;
   }
 
