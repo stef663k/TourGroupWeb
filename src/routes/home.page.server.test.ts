@@ -310,6 +310,7 @@ type LoadResult = {
 		}[];
 	}[];
 	companies: { id: number; name: string; link: string | null }[];
+	logoUrl: string;
 	};
 
 async function runLoad(platform: unknown): Promise<LoadResult> {
@@ -335,6 +336,23 @@ describe('home load', () => {
 	it('returnerer tom liste når platform.env mangler (ingen 500)', async () => {
 		const data = await runLoad({});
 		expect(data.artists).toEqual([]);
+	});
+
+	it('returnerer logo-URL via /images-ruten som standard', async () => {
+		const db = createFakeD1();
+		const data = await runLoad(makePlatform(db));
+		expect(data.logoUrl).toBe('/images/logo/logoudentegn.png');
+	});
+
+	it('bruger R2_PUBLIC_URL til logoet når den er sat', async () => {
+		const db = createFakeD1();
+		const data = await runLoad(makePlatform(db, 'https://cdn.example.com'));
+		expect(data.logoUrl).toBe('https://cdn.example.com/logo/logoudentegn.png');
+	});
+
+	it('giver logo-URL også når databasen ikke er konfigureret', async () => {
+		const data = await runLoad(undefined);
+		expect(data.logoUrl).toBe('/images/logo/logoudentegn.png');
 	});
 
 	it('kaster ikke når databasen fejler (fx manglende tabeller)', async () => {

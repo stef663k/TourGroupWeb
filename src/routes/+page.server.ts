@@ -40,11 +40,13 @@ function validateLink(link: string): string | null {
 	return null;
 }
 
+const LOGO_KEY = 'logo/logoudentegn.png';
+
 export const load: PageServerLoad = async ({ platform }) => {
 	const db = platform?.env?.DB;
-	if (!db) return { artists: [], companies: [] };
-
 	const baseUrl = platform?.env?.R2_PUBLIC_URL;
+	const logoUrl = publicImageUrl(LOGO_KEY, baseUrl);
+	if (!db) return { artists: [], companies: [], logoUrl };
 
 	// Events hentes først, så vi kan finde hver artists nyeste event (efter dato)
 	// og vise alle artistens events i artistmodalen.
@@ -132,7 +134,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 		console.error('Kunne ikke hente companies:', err);
 	}
 
-	return { artists: artistsWithLinks, companies };
+	return { artists: artistsWithLinks, companies, logoUrl };
 	};
 
 	export const actions: Actions = {

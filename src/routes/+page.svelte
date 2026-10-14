@@ -42,7 +42,7 @@
 <!-- Hero -->
 <section class="hero">
   <div class="label">Lighting for events</div>
-  <h1>Tour Group</h1>
+  <h1><img class="hero-logo" src={data.logoUrl} alt="Tour Group" /></h1>
   <p class="lead">Coming soon</p>
 </section>
 
@@ -279,6 +279,14 @@
 {/if}
 
 <style>
+  .hero-logo {
+    display: block;
+    width: 100%;
+    max-width: 24rem;
+    height: auto;
+    margin-inline: auto;
+  }
+
   .lead {
     font-size: 1.25rem;
     color: #cccccc;
