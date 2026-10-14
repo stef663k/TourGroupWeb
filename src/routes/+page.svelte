@@ -42,7 +42,6 @@
 <!-- Hero -->
 <section class="hero">
   <div class="label">Lighting for events</div>
-  <h1><img class="hero-logo" src={data.logoUrl} alt="Tour Group" /></h1>
   <p class="lead">Coming soon</p>
 </section>
 
@@ -279,12 +278,20 @@
 {/if}
 
 <style>
-  .hero-logo {
     display: block;
     width: 100%;
     max-width: 48rem;
-    height: auto;
     margin-inline: auto;
+    overflow: hidden;
+    aspect-ratio: 1 / 1;
+  }
+
+  .hero-logo {
+    display: block;
+    width: calc(100% * var(--logo-zoom));
+    height: 100%;
+    object-fit: contain;
+    margin-inline: calc(-50% * (var(--logo-zoom) - 1));
   }
 
   .lead {
