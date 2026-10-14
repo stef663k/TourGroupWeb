@@ -282,7 +282,7 @@
   .hero-logo {
     display: block;
     width: 100%;
-    max-width: 24rem;
+    max-width: 48rem;
     height: auto;
     margin-inline: auto;
   }
