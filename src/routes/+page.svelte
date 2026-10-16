@@ -309,19 +309,21 @@
     background-image: var(--hero-bg);
     background-size: cover;
     background-position: center;
-    opacity: 0.7;
+    opacity: 0.9;
     pointer-events: none;
   }
 
-  /* Dark scrim over the background so the hero text stays readable. */
+  /* Light scrim only near the edges so the image stays vivid while the
+     centered hero text remains readable. */
   .hero-bg::after {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(
-      to bottom,
-      rgba(0, 0, 0, 0.35),
-      rgba(0, 0, 0, 0.6)
+    background: radial-gradient(
+      ellipse at center,
+      rgba(0, 0, 0, 0.55) 0%,
+      rgba(0, 0, 0, 0.2) 55%,
+      rgba(0, 0, 0, 0.02) 100%
     );
   }
 
