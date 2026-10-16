@@ -40,7 +40,8 @@
 </svelte:head>
 
 <!-- Hero -->
-<section class="hero">
+<section class="hero" style="--hero-bg: url({data.heroBackgroundUrl});">
+  <div class="hero-bg" aria-hidden="true"></div>
   <div class="label">Lighting for events</div>
   <h1>
     <img class="hero-logo" src={data.logoUrl} alt="Tour Group" />
@@ -287,6 +288,29 @@
     max-width: 34rem;
     height: auto;
     margin-inline: auto;
+  }
+
+  /* Muted background image behind the hero content. */
+  .hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+  }
+
+  .hero :global(> *) {
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background-image: var(--hero-bg);
+    background-size: cover;
+    background-position: center;
+    opacity: 0.25;
+    pointer-events: none;
   }
 
   .lead {

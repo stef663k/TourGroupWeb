@@ -313,6 +313,7 @@ type LoadResult = {
 	}[];
 	companies: { id: number; name: string; link: string | null }[];
 	logoUrl: string;
+	heroBackgroundUrl: string;
 	};
 
 async function runLoad(platform: unknown): Promise<LoadResult> {
@@ -355,6 +356,23 @@ describe('home load', () => {
 	it('giver logo-URL også når databasen ikke er konfigureret', async () => {
 		const data = await runLoad(undefined);
 		expect(data.logoUrl).toBe('/images/logo/logoudentegn.png');
+	});
+
+	it('returnerer hero-baggrund via /images-ruten som standard', async () => {
+		const db = createFakeD1();
+		const data = await runLoad(makePlatform(db));
+		expect(data.heroBackgroundUrl).toBe('/images/Lukas/HomeBackground.jpg');
+	});
+
+	it('bruger R2_PUBLIC_URL til hero-baggrunden når den er sat', async () => {
+		const db = createFakeD1();
+		const data = await runLoad(makePlatform(db, 'https://cdn.example.com'));
+		expect(data.heroBackgroundUrl).toBe('https://cdn.example.com/Lukas/HomeBackground.jpg');
+	});
+
+	it('giver hero-baggrund også når databasen ikke er konfigureret', async () => {
+		const data = await runLoad(undefined);
+		expect(data.heroBackgroundUrl).toBe('/images/Lukas/HomeBackground.jpg');
 	});
 
 	it('kaster ikke når databasen fejler (fx manglende tabeller)', async () => {

@@ -41,12 +41,14 @@ function validateLink(link: string): string | null {
 }
 
 const LOGO_KEY = 'logo/logoudentegn.png';
+const HERO_BACKGROUND_KEY = 'Lukas/HomeBackground.jpg';
 
 export const load: PageServerLoad = async ({ platform }) => {
 	const db = platform?.env?.DB;
 	const baseUrl = platform?.env?.R2_PUBLIC_URL;
 	const logoUrl = publicImageUrl(LOGO_KEY, baseUrl);
-	if (!db) return { artists: [], companies: [], logoUrl };
+	const heroBackgroundUrl = publicImageUrl(HERO_BACKGROUND_KEY, baseUrl);
+	if (!db) return { artists: [], companies: [], logoUrl, heroBackgroundUrl };
 
 	// Events hentes først, så vi kan finde hver artists nyeste event (efter dato)
 	// og vise alle artistens events i artistmodalen.
@@ -135,7 +137,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 		console.error('Kunne ikke hente companies:', err);
 	}
 
-	return { artists: artistsWithLinks, companies, logoUrl };
+	return { artists: artistsWithLinks, companies, logoUrl, heroBackgroundUrl };
 	};
 
 	export const actions: Actions = {
