@@ -23,7 +23,9 @@
 </script>
 
 <nav>
-	<a href="/" onclick={closeMenu}>Tour Group</a>
+	<a href="/" class="brand" onclick={closeMenu} aria-label="Tour Group — home">
+		<img class="brand-logo" src={data.logoUrl} alt="Tour Group" />
+	</a>
 	<button
 		type="button"
 		class="burger"
@@ -60,3 +62,16 @@
 </footer>
 
 <CookieConsent />
+
+<style>
+	.brand {
+		display: inline-flex;
+		align-items: center;
+	}
+
+	.brand-logo {
+		display: block;
+		height: clamp(1.75rem, 4vw, 2.25rem);
+		width: auto;
+	}
+</style>
