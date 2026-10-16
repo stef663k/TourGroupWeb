@@ -309,8 +309,20 @@
     background-image: var(--hero-bg);
     background-size: cover;
     background-position: center;
-    opacity: 0.25;
+    opacity: 0.5;
     pointer-events: none;
+  }
+
+  /* Dark scrim over the background so the hero text stays readable. */
+  .hero-bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.35),
+      rgba(0, 0, 0, 0.6)
+    );
   }
 
   .lead {

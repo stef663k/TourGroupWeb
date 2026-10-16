@@ -101,9 +101,9 @@ describe('imageExtension', () => {
 });
 
 describe('buildImageKey', () => {
-	it('lægger ekstra billeder under events/<slug>/photos/', () => {
+	it('lægger ekstra billeder under eventModal/<slug>/', () => {
 		const key = buildImageKey('sommerfest', 'image/jpeg', 'abc-123', 'photo');
-		expect(key).toBe('events/sommerfest/photos/abc-123.jpg');
+		expect(key).toBe('eventModal/sommerfest/abc-123.jpg');
 	});
 
 	it('lægger cover-billedet under events/<slug>/cover/', () => {
@@ -111,12 +111,12 @@ describe('buildImageKey', () => {
 		expect(key).toBe('events/sommerfest/cover/abc-123.jpg');
 	});
 
-	it('bruger photos-mappen som standard', () => {
-		expect(buildImageKey('e', 'image/png', 'x')).toBe('events/e/photos/x.png');
+	it('bruger eventModal som standard', () => {
+		expect(buildImageKey('e', 'image/png', 'x')).toBe('eventModal/e/x.png');
 	});
 
 	it('bruger den korrekte endelse pr. type', () => {
-		expect(buildImageKey('e', 'image/png', 'x', 'photo')).toBe('events/e/photos/x.png');
+		expect(buildImageKey('e', 'image/png', 'x', 'photo')).toBe('eventModal/e/x.png');
 		expect(buildImageKey('e', 'image/avif', 'x', 'cover')).toBe('events/e/cover/x.avif');
 	});
 });

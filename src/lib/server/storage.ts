@@ -96,20 +96,22 @@ export function imageExtension(contentType: string): string | null {
  * Bygger en R2-nøgle for et billede. Slug og id er allerede valideret
  * af kalderen; UUID'en sikrer unikhed og gør nøglen uforudsigelig.
  *
- * `kind` placerer billedet i en undermappe, så cover-billedet (fra oprettelsen)
- * og de ekstra eventmodal-billeder holdes adskilt i bucketen. Eksisterende
- * nøgler påvirkes ikke — databasen gemmer den fulde nøgle pr. billede.
+ * `kind` placerer billedet i forskellige mapper, så cover-billedet (fra
+ * oprettelsen) og de ekstra eventmodal-billeder holdes adskilt i bucketen:
+ *   - cover: `events/<slug>/cover/<uuid>.<ext>`
+ *   - photo: `eventModal/<slug>/<uuid>.<ext>`
+ * Eksisterende nøgler påvirkes ikke — databasen gemmer den fulde nøgle pr. billede.
  */
-export function buildImageKey(
-	slug: string,
-	contentType: string,
-	uuid: string,
-	kind: 'cover' | 'photo' = 'photo'
-): string {
-	const ext = imageExtension(contentType) ?? 'bin';
-	const folder = kind === 'cover' ? 'cover' : 'photos';
-	return `events/${slug}/${folder}/${uuid}.${ext}`;
-}
+ export function buildImageKey(
+ slug: string,
+ contentType: string,
+ uuid: string,
+ kind: 'cover' | 'photo' = 'photo'
+ ): string {
+ const ext = imageExtension(contentType) ?? 'bin';
+ if (kind === 'cover') return `events/${slug}/cover/${uuid}.${ext}`;
+ return `eventModal/${slug}/${uuid}.${ext}`;
+ }
 
 /**
  * Udleder en offentlig URL for en R2-nøgle. Bruger `baseUrl` hvis sat

@@ -1072,7 +1072,7 @@ describe('createEvent action', () => {
 		expect(res.success).toBe(true);
 		expect(bucket._puts).toHaveBeenCalledTimes(1);
 		const [key, , opts] = bucket._puts.mock.calls[0];
-		expect(key).toMatch(/^events\/sommerfest\/photos\/.+\.jpg$/);
+		expect(key).toMatch(/^eventModal\/sommerfest\/.+\.jpg$/);
 		expect(opts?.httpMetadata?.contentType).toBe('image/jpeg');
 		expect(db._images).toHaveLength(1);
 		expect(db._images[0].event_id).toBe(1);
