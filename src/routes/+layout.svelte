@@ -71,7 +71,9 @@
 
 	.brand-logo {
 		display: block;
-		height: clamp(10.5rem, 12vw, 11.5rem);
+		height: clamp(2rem, 4vw, 2.75rem);
 		width: auto;
+		aspect-ratio: 931 / 150;
+		object-fit: contain;
 	}
 </style>

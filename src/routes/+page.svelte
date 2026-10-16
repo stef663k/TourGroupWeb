@@ -333,8 +333,8 @@
     width: 100%;
     max-width: var(--content-width);
     margin: 0 auto;
-    border-top: 1px solid var(--line);
-    border-bottom: 1px solid var(--line);
+    border-top: 1px solid var(--line-strong);
+    border-bottom: 1px solid var(--line-strong);
   }
 
   .work li {
@@ -503,7 +503,7 @@
   }
 
   .work li + li {
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--line-strong);
   }
 
   /* "More"-linket hører til rækken ovenfor, så der må ikke være en skillelinje imellem. */
