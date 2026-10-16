@@ -37,8 +37,9 @@ function createFakeD1(): D1Database {
 		caption: string | null;
 		content_type: string;
 		sort_order: number;
+		is_cover: number;
 		created_at: number;
-	}[] = [];
+		}[] = [];
 
 	const prepare = (sql: string) => {
 		let args: unknown[] = [];
@@ -52,7 +53,7 @@ function createFakeD1(): D1Database {
 			}
 			if (
 				q.startsWith(
-					'SELECT id, event_id, r2_key, caption, content_type, sort_order, created_at FROM event_images WHERE id'
+					'SELECT id, event_id, r2_key, caption, content_type, sort_order, is_cover, created_at FROM event_images WHERE id'
 				)
 			) {
 				const [id] = args as [number];
@@ -88,11 +89,12 @@ function createFakeD1(): D1Database {
 				return row as T;
 			}
 			if (q.startsWith('INSERT INTO event_images')) {
-				const [event_id, r2_key, caption, content_type, sort_order] = args as [
+				const [event_id, r2_key, caption, content_type, sort_order, is_cover] = args as [
 					number,
 					string,
 					string | null,
 					string,
+					number,
 					number
 				];
 				if (images.some((i) => i.r2_key === r2_key)) {
@@ -105,6 +107,7 @@ function createFakeD1(): D1Database {
 					caption,
 					content_type,
 					sort_order,
+					is_cover,
 					created_at: Math.floor(Date.now() / 1000)
 				};
 				images.push(row);
@@ -156,7 +159,7 @@ function createFakeD1(): D1Database {
 			}
 			if (
 				q.startsWith(
-					'SELECT id, event_id, r2_key, caption, content_type, sort_order, created_at FROM event_images WHERE event_id'
+					'SELECT id, event_id, r2_key, caption, content_type, sort_order, is_cover, created_at FROM event_images WHERE event_id'
 				)
 			) {
 				const [eventId] = args as [number];
@@ -373,6 +376,24 @@ describe('event-billeder', () => {
 		await addEventImage(db, { eventId, r2Key: 'events/fest/a.jpg', contentType: 'image/jpeg', sortOrder: 1 });
 		const images = await listEventImages(db, eventId);
 		expect(images.map((i) => i.r2_key)).toEqual(['events/fest/a.jpg', 'events/fest/b.jpg']);
+	});
+
+	it('markerer cover-billedet og lader ekstra billeder være ikke-cover', async () => {
+		const cover = await addEventImage(db, {
+			eventId,
+			r2Key: 'events/fest/cover.jpg',
+			contentType: 'image/jpeg',
+			isCover: true
+		});
+		const extra = await addEventImage(db, {
+			eventId,
+			r2Key: 'events/fest/extra.jpg',
+			contentType: 'image/jpeg'
+		});
+		expect(cover.is_cover).toBe(1);
+		expect(extra.is_cover).toBe(0);
+		const images = await listEventImages(db, eventId);
+		expect(images.map((i) => i.is_cover)).toEqual([1, 0]);
 	});
 
 	it('afviser en dublet-r2-nøgle', async () => {

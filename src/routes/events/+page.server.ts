@@ -60,6 +60,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 				images: images.map((img) => ({
 					id: img.id,
 					caption: img.caption,
+					isCover: img.is_cover === 1,
 					url: publicImageUrl(img.r2_key, baseUrl)
 				}))
 			};
@@ -186,7 +187,7 @@ export const actions: Actions = {
 			return fail(500, { error: 'Could not create the event. Please try again later.' });
 		}
 
-		const key = buildImageKey(created.slug, validation.contentType, crypto.randomUUID());
+		const key = buildImageKey(created.slug, validation.contentType, crypto.randomUUID(), 'cover');
 
 		try {
 			await bucket.put(key, await file.arrayBuffer(), {
@@ -197,7 +198,8 @@ export const actions: Actions = {
 				eventId: created.id,
 				r2Key: key,
 				caption: null,
-				contentType: validation.contentType
+				contentType: validation.contentType,
+				isCover: true
 			});
 		} catch (err) {
 			console.error('Kunne ikke uploade billede:', err);
@@ -299,7 +301,7 @@ export const actions: Actions = {
 		});
 		if (!validation.ok) return fail(400, { error: validation.error });
 
-		const key = buildImageKey(event.slug, validation.contentType, crypto.randomUUID());
+		const key = buildImageKey(event.slug, validation.contentType, crypto.randomUUID(), 'photo');
 
 		try {
 			await bucket.put(key, await file.arrayBuffer(), {

@@ -75,6 +75,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 				images: images.map((img) => ({
 					id: img.id,
 					caption: img.caption,
+					isCover: img.is_cover === 1,
 					url: publicImageUrl(img.r2_key, baseUrl)
 				}))
 			};

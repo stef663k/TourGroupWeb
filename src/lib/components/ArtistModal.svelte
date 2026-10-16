@@ -12,6 +12,7 @@
     id: number;
     caption: string | null;
     url: string;
+    isCover: boolean;
   }
 
   interface ArtistEvent {

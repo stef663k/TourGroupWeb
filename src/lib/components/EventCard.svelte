@@ -7,6 +7,7 @@
     id: number;
     caption: string | null;
     url: string;
+    isCover: boolean;
   }
 
   interface Event {
@@ -32,6 +33,10 @@
 
   let editing = $state(false);
   let showModal = $state(false);
+
+  // Kortet viser kun cover-billedet (det der blev uploadet da eventet blev
+  // oprettet). Ekstra billeder vises udelukkende inde i modalen.
+  let coverImages = $derived(event.images.filter((image) => image.isCover));
 
   function formatDate(iso: string | null): string {
     if (!iso) return 'Date to be announced';
@@ -94,12 +99,12 @@
       </div>
     {/if}
     </div>
-    {#if event.images.length > 0 || event.description || event.artistName}
+    {#if coverImages.length > 0 || event.description || event.artistName}
       <div class="event-body">
-        {#if event.images.length > 0}
+        {#if coverImages.length > 0}
           <div class="images-column">
             <ul class="images">
-              {#each event.images as image (image.id)}
+              {#each coverImages as image (image.id)}
                 <li>
                   <img src={image.url} alt={image.caption ?? event.name} loading="lazy" />
                 </li>

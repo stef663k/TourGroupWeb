@@ -6,6 +6,7 @@
     id: number;
     caption: string | null;
     url: string;
+    isCover: boolean;
   }
 
   interface EventData {
@@ -39,6 +40,10 @@
   let artistId = $state(event.artist_id ? String(event.artist_id) : '');
   // svelte-ignore state_referenced_locally
   let link = $state(event.link ?? '');
+
+  // Modalen viser kun de efterfølgende billeder. Cover-billedet (uploadet da
+  // eventet blev oprettet) vises på eventkortet i stedet.
+  let photos = $derived(event.images.filter((image) => !image.isCover));
 
   // Re-sync the editable fields only when the parent passes a genuinely new
   // saved value (e.g. after the update action re-runs the load). Comparing
@@ -240,9 +245,9 @@
       <div class="images-section">
         <h3>Photos</h3>
 
-        {#if event.images.length > 0}
+        {#if photos.length > 0}
           <ul class="images">
-            {#each event.images as image (image.id)}
+            {#each photos as image (image.id)}
               <li>
                 <img src={image.url} alt={image.caption ?? event.name} loading="lazy" />
                 {#if owner}

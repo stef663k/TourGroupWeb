@@ -32,8 +32,9 @@ function createFakeD1() {
 		caption: string | null;
 		content_type: string;
 		sort_order: number;
+		is_cover: number;
 		created_at: number;
-	}[] = [];
+		}[] = [];
 
 	const prepare = (sql: string) => {
 		let args: unknown[] = [];
@@ -57,7 +58,7 @@ function createFakeD1() {
 				}
 				if (
 					q.startsWith(
-						'SELECT id, event_id, r2_key, caption, content_type, sort_order, created_at FROM event_images WHERE event_id'
+						'SELECT id, event_id, r2_key, caption, content_type, sort_order, is_cover, created_at FROM event_images WHERE event_id'
 					)
 				) {
 					const [eventId] = args as [number];
@@ -97,7 +98,7 @@ function createFakeD1() {
 				}
 				if (
 					q.startsWith(
-						'SELECT id, event_id, r2_key, caption, content_type, sort_order, created_at FROM event_images WHERE id'
+						'SELECT id, event_id, r2_key, caption, content_type, sort_order, is_cover, created_at FROM event_images WHERE id'
 					)
 				) {
 					const [id] = args as [number];
@@ -160,11 +161,12 @@ function createFakeD1() {
 					return row as T;
 				}
 				if (q.startsWith('INSERT INTO event_images')) {
-					const [event_id, r2_key, caption, content_type, sort_order] = args as [
+					const [event_id, r2_key, caption, content_type, sort_order, is_cover] = args as [
 						number,
 						string,
 						string | null,
 						string,
+						number,
 						number
 					];
 					const row = {
@@ -174,6 +176,7 @@ function createFakeD1() {
 						caption,
 						content_type,
 						sort_order,
+						is_cover,
 						created_at: 0
 					};
 					images.push(row);
@@ -192,10 +195,10 @@ function createFakeD1() {
 		_artists: artists,
 		_seed: (
 			rows: Omit<(typeof events)[number], 'artist_id'>[],
-			imageRows: typeof images
+			imageRows: Omit<(typeof images)[number], 'is_cover'>[]
 		) => {
 			events.push(...rows.map((r) => ({ ...r, artist_id: null })));
-			images.push(...imageRows);
+			images.push(...imageRows.map((r) => ({ ...r, is_cover: 0 })));
 		},
 		_seedArtist: (row: { id: number; name: string }) => {
 			artists.push({
@@ -309,7 +312,7 @@ type LoadResult = {
 		link: string | null;
 		artist_id: number | null;
 		artistName: string | null;
-		images: { id: number; caption: string | null; url: string }[];
+		images: { id: number; caption: string | null; url: string; isCover: boolean }[];
 	}[];
 	artists: { id: number; name: string }[];
 	imageBaseUrl: string | undefined;
@@ -385,7 +388,12 @@ describe('events load', () => {
 		expect(data.events).toHaveLength(1);
 		expect(data.events[0].link).toBe('https://example.com/billetter');
 		expect(data.events[0].images).toEqual([
-			{ id: 10, caption: 'Første', url: 'https://cdn.example.com/events/sommerfest/a.jpg' }
+			{
+				id: 10,
+				caption: 'Første',
+				url: 'https://cdn.example.com/events/sommerfest/a.jpg',
+				isCover: false
+			}
 		]);
 		expect(data.imageBaseUrl).toBe('https://cdn.example.com');
 	});
@@ -543,9 +551,10 @@ describe('createEvent action', () => {
 		expect(res.success).toBe(true);
 		expect(bucket._puts).toHaveBeenCalledTimes(1);
 		const [key, , opts] = bucket._puts.mock.calls[0];
-		expect(key).toMatch(/^events\/sommerfest\/.+\.jpg$/);
+		expect(key).toMatch(/^events\/sommerfest\/cover\/.+\.jpg$/);
 		expect(opts?.httpMetadata?.contentType).toBe('image/jpeg');
-	});
+		expect(db._images[0].is_cover).toBe(1);
+		});
 
 	it('afviser en dublet-slug', async () => {
 		const db = createFakeD1();
@@ -1063,12 +1072,13 @@ describe('createEvent action', () => {
 		expect(res.success).toBe(true);
 		expect(bucket._puts).toHaveBeenCalledTimes(1);
 		const [key, , opts] = bucket._puts.mock.calls[0];
-		expect(key).toMatch(/^events\/sommerfest\/.+\.jpg$/);
+		expect(key).toMatch(/^events\/sommerfest\/photos\/.+\.jpg$/);
 		expect(opts?.httpMetadata?.contentType).toBe('image/jpeg');
 		expect(db._images).toHaveLength(1);
 		expect(db._images[0].event_id).toBe(1);
 		expect(db._images[0].caption).toBe('Scene');
-	});
+		expect(db._images[0].is_cover).toBe(0);
+		});
 
 	it('afviser en for lang billedtekst', async () => {
 		const db = createFakeD1();

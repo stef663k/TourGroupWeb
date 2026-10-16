@@ -37,6 +37,7 @@ export interface EventImageRow {
 	caption: string | null;
 	content_type: string;
 	sort_order: number;
+	is_cover: number;
 	created_at: number;
 }
 
@@ -453,20 +454,22 @@ export async function addEventImage(
 		caption?: string | null;
 		contentType: string;
 		sortOrder?: number;
+		isCover?: boolean;
 	}
 ): Promise<EventImageRow> {
 	const result = await db
 		.prepare(
-			'INSERT INTO event_images (event_id, r2_key, caption, content_type, sort_order) ' +
-				'VALUES (?1, ?2, ?3, ?4, ?5) ' +
-				'RETURNING id, event_id, r2_key, caption, content_type, sort_order, created_at'
+			'INSERT INTO event_images (event_id, r2_key, caption, content_type, sort_order, is_cover) ' +
+				'VALUES (?1, ?2, ?3, ?4, ?5, ?6) ' +
+				'RETURNING id, event_id, r2_key, caption, content_type, sort_order, is_cover, created_at'
 		)
 		.bind(
 			input.eventId,
 			input.r2Key,
 			input.caption ?? null,
 			input.contentType,
-			input.sortOrder ?? 0
+			input.sortOrder ?? 0,
+			input.isCover ? 1 : 0
 		)
 		.first<EventImageRow>();
 	if (!result) throw new Error('Could not add image.');
@@ -482,7 +485,7 @@ export async function listEventImages(
 ): Promise<EventImageRow[]> {
 	const result = await db
 		.prepare(
-			'SELECT id, event_id, r2_key, caption, content_type, sort_order, created_at ' +
+			'SELECT id, event_id, r2_key, caption, content_type, sort_order, is_cover, created_at ' +
 				'FROM event_images WHERE event_id = ?1 ORDER BY sort_order, id'
 		)
 		.bind(eventId)
@@ -499,7 +502,7 @@ export async function getEventImage(
 ): Promise<EventImageRow | null> {
 	const row = await db
 		.prepare(
-			'SELECT id, event_id, r2_key, caption, content_type, sort_order, created_at ' +
+			'SELECT id, event_id, r2_key, caption, content_type, sort_order, is_cover, created_at ' +
 				'FROM event_images WHERE id = ?1'
 		)
 		.bind(id)

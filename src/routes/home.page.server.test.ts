@@ -49,6 +49,7 @@ function createFakeD1() {
 		caption: string | null;
 		content_type: string;
 		sort_order: number;
+		is_cover: number;
 		created_at: number;
 	}[] = [];
 
@@ -165,7 +166,7 @@ function createFakeD1() {
 					}
 					if (
 						q.startsWith(
-							'SELECT id, event_id, r2_key, caption, content_type, sort_order, created_at FROM event_images WHERE event_id'
+							'SELECT id, event_id, r2_key, caption, content_type, sort_order, is_cover, created_at FROM event_images WHERE event_id'
 						)
 					) {
 						const [eventId] = args as [number];
@@ -249,6 +250,7 @@ function createFakeD1() {
 				caption: image.caption ?? null,
 				content_type: 'image/jpeg',
 				sort_order: 0,
+				is_cover: 0,
 				created_at: 0
 			});
 		},
@@ -306,7 +308,7 @@ type LoadResult = {
 			event_date: string | null;
 			artist_id: number | null;
 			artistName: string | null;
-			images: { id: number; caption: string | null; url: string }[];
+			images: { id: number; caption: string | null; url: string; isCover: boolean }[];
 		}[];
 	}[];
 	companies: { id: number; name: string; link: string | null }[];
@@ -441,7 +443,12 @@ describe('home load', () => {
 		expect(data.artists[0].events.map((e) => e.id)).toEqual([9, 8]);
 		expect(data.artists[0].events[0].artistName).toBe('Faustix');
 		expect(data.artists[0].events[0].images).toEqual([
-			{ id: 10, caption: 'Scene', url: 'https://cdn.example.com/events/nyeste/a.jpg' }
+			{
+				id: 10,
+				caption: 'Scene',
+				isCover: false,
+				url: 'https://cdn.example.com/events/nyeste/a.jpg'
+			}
 		]);
 	});
 

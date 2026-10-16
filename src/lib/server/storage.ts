@@ -95,10 +95,20 @@ export function imageExtension(contentType: string): string | null {
 /**
  * Bygger en R2-nøgle for et billede. Slug og id er allerede valideret
  * af kalderen; UUID'en sikrer unikhed og gør nøglen uforudsigelig.
+ *
+ * `kind` placerer billedet i en undermappe, så cover-billedet (fra oprettelsen)
+ * og de ekstra eventmodal-billeder holdes adskilt i bucketen. Eksisterende
+ * nøgler påvirkes ikke — databasen gemmer den fulde nøgle pr. billede.
  */
-export function buildImageKey(slug: string, contentType: string, uuid: string): string {
+export function buildImageKey(
+	slug: string,
+	contentType: string,
+	uuid: string,
+	kind: 'cover' | 'photo' = 'photo'
+): string {
 	const ext = imageExtension(contentType) ?? 'bin';
-	return `events/${slug}/${uuid}.${ext}`;
+	const folder = kind === 'cover' ? 'cover' : 'photos';
+	return `events/${slug}/${folder}/${uuid}.${ext}`;
 }
 
 /**

@@ -101,14 +101,23 @@ describe('imageExtension', () => {
 });
 
 describe('buildImageKey', () => {
-	it('bygger en nøgle under events/<slug>/', () => {
-		const key = buildImageKey('sommerfest', 'image/jpeg', 'abc-123');
-		expect(key).toBe('events/sommerfest/abc-123.jpg');
+	it('lægger ekstra billeder under events/<slug>/photos/', () => {
+		const key = buildImageKey('sommerfest', 'image/jpeg', 'abc-123', 'photo');
+		expect(key).toBe('events/sommerfest/photos/abc-123.jpg');
+	});
+
+	it('lægger cover-billedet under events/<slug>/cover/', () => {
+		const key = buildImageKey('sommerfest', 'image/jpeg', 'abc-123', 'cover');
+		expect(key).toBe('events/sommerfest/cover/abc-123.jpg');
+	});
+
+	it('bruger photos-mappen som standard', () => {
+		expect(buildImageKey('e', 'image/png', 'x')).toBe('events/e/photos/x.png');
 	});
 
 	it('bruger den korrekte endelse pr. type', () => {
-		expect(buildImageKey('e', 'image/png', 'x')).toBe('events/e/x.png');
-		expect(buildImageKey('e', 'image/avif', 'x')).toBe('events/e/x.avif');
+		expect(buildImageKey('e', 'image/png', 'x', 'photo')).toBe('events/e/photos/x.png');
+		expect(buildImageKey('e', 'image/avif', 'x', 'cover')).toBe('events/e/cover/x.avif');
 	});
 });
 
