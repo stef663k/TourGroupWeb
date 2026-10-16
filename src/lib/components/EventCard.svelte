@@ -134,7 +134,7 @@
     <div class="edit-panel">
       <EventForm
         action="?/updateEvent"
-        fields={['name', 'description', 'eventDate', 'location', 'link', 'artist']}
+        fields={['name', 'description', 'eventDate', 'location', 'artist']}
         id={event.id}
         {artists}
         initial={{
@@ -142,7 +142,6 @@
           description: event.description,
           eventDate: event.event_date,
           location: event.location,
-          link: event.link,
           artistId: event.artist_id
         }}
         submitLabel="Save"

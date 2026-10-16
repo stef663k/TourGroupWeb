@@ -37,6 +37,8 @@
   let details = $state(event.details ?? '');
   // svelte-ignore state_referenced_locally
   let artistId = $state(event.artist_id ? String(event.artist_id) : '');
+  // svelte-ignore state_referenced_locally
+  let link = $state(event.link ?? '');
 
   // Re-sync the editable fields only when the parent passes a genuinely new
   // saved value (e.g. after the update action re-runs the load). Comparing
@@ -48,18 +50,23 @@
   let syncedDetails = event.details ?? '';
   // svelte-ignore state_referenced_locally
   let syncedArtistId = event.artist_id;
+  // svelte-ignore state_referenced_locally
+  let syncedLink = event.link ?? '';
   $effect(() => {
     if (
       event.name !== syncedName ||
       (event.details ?? '') !== syncedDetails ||
-      event.artist_id !== syncedArtistId
+      event.artist_id !== syncedArtistId ||
+      (event.link ?? '') !== syncedLink
     ) {
       syncedName = event.name;
       syncedDetails = event.details ?? '';
       syncedArtistId = event.artist_id;
+      syncedLink = event.link ?? '';
       name = event.name;
       details = event.details ?? '';
       artistId = event.artist_id ? String(event.artist_id) : '';
+      link = event.link ?? '';
     }
   });
 
@@ -185,7 +192,6 @@
           <input type="hidden" name="id" value={event.id} />
           <input type="hidden" name="eventDate" value={event.event_date ?? ''} />
           <input type="hidden" name="location" value={event.location ?? ''} />
-          <input type="hidden" name="link" value={event.link ?? ''} />
 
           <label for="modal-name">Name</label>
           <input id="modal-name" name="name" type="text" bind:value={name} required maxlength="200" />
@@ -197,6 +203,16 @@
               <option value={String(option.id)}>{option.name}</option>
             {/each}
           </select>
+
+          <label for="modal-link">Link (optional)</label>
+          <input
+            id="modal-link"
+            name="link"
+            type="url"
+            bind:value={link}
+            maxlength="2048"
+            placeholder="https://…"
+          />
 
           <label for="modal-description">Details</label>
           <textarea

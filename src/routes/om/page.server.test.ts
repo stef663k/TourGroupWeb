@@ -137,19 +137,19 @@ describe('om load', () => {
 	it('returnerer ejerens billede-URL via /images-ruten som standard', async () => {
 		const db = createFakeD1();
 		const data = await runLoad(makePlatform(db));
-		expect(data.ownerImageUrl).toBe('/images/Lukas/rounded');
-	});
+		expect(data.ownerImageUrl).toBe('/images/Lukas/rounded.png');
+		});
 
-	it('bruger R2_PUBLIC_URL til ejerens billede når den er sat', async () => {
+		it('bruger R2_PUBLIC_URL til ejerens billede når den er sat', async () => {
 		const db = createFakeD1();
 		const data = await runLoad(makePlatform(db, 'https://cdn.example.com'));
-		expect(data.ownerImageUrl).toBe('https://cdn.example.com/Lukas/rounded');
-	});
+		expect(data.ownerImageUrl).toBe('https://cdn.example.com/Lukas/rounded.png');
+		});
 
-	it('giver ejerens billede-URL også når databasen ikke er konfigureret', async () => {
+		it('giver ejerens billede-URL også når databasen ikke er konfigureret', async () => {
 		const data = await runLoad(undefined);
-		expect(data.ownerImageUrl).toBe('/images/Lukas/rounded');
-	});
+		expect(data.ownerImageUrl).toBe('/images/Lukas/rounded.png');
+		});
 	});
 
 describe('updateAbout action', () => {
