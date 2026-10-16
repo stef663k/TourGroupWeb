@@ -104,6 +104,14 @@ function createFakeD1() {
 					const [id] = args as [number];
 					return (images.find((i) => i.id === id) ?? null) as T | null;
 				}
+				if (q.startsWith('UPDATE event_images SET')) {
+					const [r2_key, content_type, id] = args as [string, string, number];
+					const row = images.find((i) => i.id === id);
+					if (!row) return null;
+					row.r2_key = r2_key;
+					row.content_type = content_type;
+					return row as T;
+				}
 				if (q.startsWith('UPDATE events SET')) {
 					const [slug, name, event_date, location, description, details, link, artist_id, id] = args as [
 						string,
@@ -288,9 +296,9 @@ async function runAddEventImage(
 		locals: { owner }
 	} as never);
 	return result as unknown as ActionResult;
-}
+	}
 
-async function runRemoveEventImage(
+	async function runRemoveEventImage(
 	form: FormData,
 	platform: unknown,
 	owner = true
@@ -1100,6 +1108,133 @@ describe('createEvent action', () => {
 		form.set('id', '1');
 		form.set('file', jpegFile());
 		const res = await runAddEventImage(form, makePlatform(undefined));
+		expect(res.status).toBe(500);
+	});
+	});
+
+	describe('updateEvent with cover', () => {
+	let errorSpy: ReturnType<typeof vi.spyOn>;
+
+	beforeEach(() => {
+		errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+	});
+
+	afterEach(() => {
+		errorSpy.mockRestore();
+	});
+
+	function seed(db: ReturnType<typeof createFakeD1>, covers: { id: number; r2_key: string }[] = []) {
+		db._seed(
+			[
+				{
+					id: 1,
+					slug: 'sommerfest',
+					name: 'Sommerfest',
+					event_date: null,
+					location: null,
+					description: null,
+					details: null,
+					link: null,
+					created_at: 0
+				}
+			],
+			covers.map((c, idx) => ({
+				id: c.id,
+				event_id: 1,
+				r2_key: c.r2_key,
+				caption: null,
+				content_type: 'image/jpeg',
+				sort_order: idx,
+				created_at: 0
+			}))
+		);
+		// _seed markerer billeder som ikke-cover; sæt cover-flaget manuelt.
+		for (const img of db._images) img.is_cover = 1;
+	}
+
+	function updateForm(withFile = true): FormData {
+		const form = new FormData();
+		form.set('id', '1');
+		form.set('name', 'Sommerfest');
+		form.set('eventDate', '2026-07-01');
+		form.set('location', 'København');
+		form.set('description', 'Beskrivelse');
+		form.set('artistId', '');
+		if (withFile) form.set('file', jpegFile('nyt.jpg'));
+		return form;
+	}
+
+	it('opdaterer uden billede når ingen fil er valgt', async () => {
+		const db = createFakeD1();
+		seed(db, [{ id: 10, r2_key: 'events/sommerfest/cover/gammel.jpg' }]);
+		const bucket = createFakeBucket();
+		const platform = { env: { DB: db, Bucket: bucket } } as unknown as App.Platform;
+
+		const res = await runUpdateEvent(updateForm(false), platform);
+
+		expect(res.success).toBe(true);
+		expect(bucket._puts).not.toHaveBeenCalled();
+		expect(bucket._deletes).not.toHaveBeenCalled();
+		expect(db._images[0].r2_key).toBe('events/sommerfest/cover/gammel.jpg');
+	});
+
+	it('overskriver det eksisterende cover og sletter det gamle R2-objekt', async () => {
+		const db = createFakeD1();
+		seed(db, [{ id: 10, r2_key: 'events/sommerfest/cover/gammel.jpg' }]);
+		const bucket = createFakeBucket();
+		const platform = { env: { DB: db, Bucket: bucket } } as unknown as App.Platform;
+
+		const res = await runUpdateEvent(updateForm(), platform);
+
+		expect(res.success).toBe(true);
+		expect(bucket._puts).toHaveBeenCalledTimes(1);
+		const [key, , opts] = bucket._puts.mock.calls[0];
+		expect(key).toMatch(/^events\/sommerfest\/cover\/.+\.jpg$/);
+		expect(opts?.httpMetadata?.contentType).toBe('image/jpeg');
+
+		// Rækken genbruges og peger nu på den nye nøgle.
+		expect(db._images).toHaveLength(1);
+		expect(db._images[0].id).toBe(10);
+		expect(db._images[0].r2_key).toBe(key);
+		expect(db._images[0].is_cover).toBe(1);
+
+		// Det gamle objekt slettes i bucketen.
+		expect(bucket._deletes).toHaveBeenCalledWith('events/sommerfest/cover/gammel.jpg');
+	});
+
+	it('opretter et cover hvis eventet ikke havde noget', async () => {
+		const db = createFakeD1();
+		seed(db);
+		const bucket = createFakeBucket();
+		const platform = { env: { DB: db, Bucket: bucket } } as unknown as App.Platform;
+
+		const res = await runUpdateEvent(updateForm(), platform);
+
+		expect(res.success).toBe(true);
+		expect(bucket._puts).toHaveBeenCalledTimes(1);
+		expect(db._images).toHaveLength(1);
+		expect(db._images[0].event_id).toBe(1);
+		expect(db._images[0].is_cover).toBe(1);
+		expect(bucket._deletes).not.toHaveBeenCalled();
+	});
+
+	it('afviser en fil hvis indhold ikke matcher typen', async () => {
+		const db = createFakeD1();
+		seed(db, [{ id: 10, r2_key: 'events/sommerfest/cover/old.jpg' }]);
+		const bucket = createFakeBucket();
+		const platform = { env: { DB: db, Bucket: bucket } } as unknown as App.Platform;
+
+		const form = updateForm(false);
+		form.set('file', new File([new Uint8Array([1, 2, 3, 4])], 'falsk.png', { type: 'image/png' }));
+		const res = await runUpdateEvent(form, platform);
+		expect(res.status).toBe(400);
+		expect(bucket._puts).not.toHaveBeenCalled();
+	});
+
+	it('fejler når storage ikke er konfigureret og et billede er valgt', async () => {
+		const db = createFakeD1();
+		seed(db);
+		const res = await runUpdateEvent(updateForm(), makePlatform(db));
 		expect(res.status).toBe(500);
 	});
 	});

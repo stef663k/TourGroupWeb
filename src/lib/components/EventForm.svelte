@@ -25,8 +25,9 @@
     initial = {},
     id = null,
     requireImage = true,
+    imageLabel = 'Image (JPEG, PNG, WebP, GIF or AVIF)',
     onSuccess
-  }: {
+    }: {
     error?: string;
     action?: string;
     fields?: Field[];
@@ -45,8 +46,9 @@
     };
     id?: number | null;
     requireImage?: boolean;
+    imageLabel?: string;
     onSuccess?: () => void;
-  } = $props();
+    } = $props();
 
   const show = (field: Field) => fields.includes(field);
 
@@ -204,7 +206,7 @@
   {/if}
 
   {#if show('file')}
-    <label for="file">Image (JPEG, PNG, WebP, GIF or AVIF)</label>
+    <label for="file">{imageLabel}</label>
     <input
       id="file"
       name="file"

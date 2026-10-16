@@ -8,6 +8,7 @@ import {
 	getEvent,
 	getEventImage,
 	updateEvent,
+	updateEventImage,
 	deleteEvent,
 	removeEventImage,
 	listArtists,
@@ -243,6 +244,50 @@ export const actions: Actions = {
 		const existing = await getEvent(db, id);
 		if (!existing) return fail(404, { error: 'The event does not exist.' });
 
+		// Valgfrit nyt cover-billede. Er der valgt en fil, valideres den og
+		// uploades til R2, hvorefter det eksisterende cover overskrives.
+		const file = data.get('file');
+		const newCoverFile = file instanceof File && file.size > 0 ? file : null;
+
+		let cover: {
+			key: string;
+			contentType: string;
+			previousKey: string | null;
+			currentId: number | null;
+		} | null = null;
+
+		if (newCoverFile) {
+			const bucket = platform?.env?.Bucket;
+			if (!bucket) return fail(500, { error: 'Storage is not configured.' });
+
+			if (newCoverFile.size > MAX_IMAGE_BYTES) {
+				return fail(400, { error: 'The file is too large (max 8 MB).' });
+			}
+
+			const head = await readImageHead(newCoverFile);
+			const validation = validateImage({
+				contentType: newCoverFile.type,
+				size: newCoverFile.size,
+				head
+			});
+			if (!validation.ok) return fail(400, { error: validation.error });
+
+			let currentImages: Awaited<ReturnType<typeof listEventImages>> = [];
+			try {
+				currentImages = await listEventImages(db, id);
+			} catch (err) {
+				console.error(`Kunne ikke hente billeder for event ${id}:`, err);
+			}
+			const currentCover = currentImages.find((img) => img.is_cover === 1) ?? null;
+
+			cover = {
+				key: buildImageKey(existing.slug, validation.contentType, crypto.randomUUID(), 'cover'),
+				contentType: validation.contentType,
+				previousKey: currentCover?.r2_key ?? null,
+				currentId: currentCover?.id ?? null
+			};
+		}
+
 		const slug = slugify(name) || existing.slug;
 
 		try {
@@ -264,8 +309,44 @@ export const actions: Actions = {
 			return fail(500, { error: 'Could not save the event. Please try again later.' });
 		}
 
+		if (cover && newCoverFile) {
+			const bucket = platform?.env?.Bucket!;
+			try {
+				await bucket.put(cover.key, await newCoverFile.arrayBuffer(), {
+					httpMetadata: { contentType: cover.contentType }
+				});
+
+				if (cover.currentId !== null) {
+					await updateEventImage(db, cover.currentId, {
+						r2Key: cover.key,
+						contentType: cover.contentType
+					});
+				} else {
+					await addEventImage(db, {
+						eventId: id,
+						r2Key: cover.key,
+						caption: null,
+						contentType: cover.contentType,
+						isCover: true
+					});
+				}
+			} catch (err) {
+				console.error('Kunne ikke opdatere cover-billede:', err);
+				return fail(500, { error: 'Could not update the cover image. Please try again later.' });
+			}
+
+			// Slet det forrige cover-objekt i R2, så vi ikke efterlader filer.
+			if (cover.previousKey && cover.previousKey !== cover.key) {
+				try {
+					await bucket.delete(cover.previousKey);
+				} catch (err) {
+					console.error(`Kunne ikke slette gammelt cover ${cover.previousKey} i R2:`, err);
+				}
+			}
+		}
+
 		return { success: true };
-	},
+		},
 
 	addEventImage: async ({ request, platform, locals }) => {
 		if (!locals.owner) return fail(403, { error: 'Not authorized.' });
@@ -320,9 +401,9 @@ export const actions: Actions = {
 		}
 
 		return { success: true };
-	},
+		},
 
-	removeEventImage: async ({ request, platform, locals }) => {
+		removeEventImage: async ({ request, platform, locals }) => {
 		if (!locals.owner) return fail(403, { error: 'Not authorized.' });
 
 		const db = platform?.env?.DB;

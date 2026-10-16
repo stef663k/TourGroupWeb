@@ -525,6 +525,26 @@ export async function removeEventImage(
 }
 
 /**
+ * Opdaterer et billedes R2-nøgle og indholdstype, fx når cover-billedet
+ * udskiftes med en ny fil (ny nøgle pga. evt. anden filendelse).
+ * Returnerer den opdaterede række eller null hvis billedet ikke findes.
+ */
+export async function updateEventImage(
+	db: D1Database,
+	id: number,
+	input: { r2Key: string; contentType: string }
+): Promise<EventImageRow | null> {
+	const result = await db
+		.prepare(
+			'UPDATE event_images SET r2_key = ?1, content_type = ?2 WHERE id = ?3 ' +
+				'RETURNING id, event_id, r2_key, caption, content_type, sort_order, is_cover, created_at'
+		)
+		.bind(input.r2Key, input.contentType, id)
+		.first<EventImageRow>();
+	return result ?? null;
+}
+
+/**
  * Slår about-rækken op (id = 1). Returnerer null hvis den ikke findes.
  * Bemærk at migrationen seeder rækken, så den normalt altid findes.
  */

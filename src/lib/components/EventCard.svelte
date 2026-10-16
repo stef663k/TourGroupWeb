@@ -65,7 +65,7 @@
       e.preventDefault();
     }
   }
-</script>
+  </script>
 
 <li class="event" id="event-{event.id}" bind:this={cardEl}>
   <div class="event-head">
@@ -155,7 +155,7 @@
     <div class="edit-panel">
       <EventForm
         action="?/updateEvent"
-        fields={['name', 'description', 'eventDate', 'location', 'artist']}
+        fields={['name', 'description', 'eventDate', 'location', 'artist', 'file']}
         id={event.id}
         {artists}
         initial={{
@@ -165,17 +165,19 @@
           location: event.location,
           artistId: event.artist_id
         }}
+        requireImage={false}
+        imageLabel="Event photo (leave empty to keep the current one)"
         submitLabel="Save"
         pendingLabel="Saving…"
         onSuccess={() => (editing = false)}
       />
       <button type="button" class="cancel" onclick={() => (editing = false)}>Cancel</button>
-      </div>
-      {/if}
-      {#if showModal}
-      <EventModal {event} {owner} {artists} onclose={() => (showModal = false)} />
-      {/if}
-      </li>
+    </div>
+    {/if}
+    {#if showModal}
+    <EventModal {event} {owner} {artists} onclose={() => (showModal = false)} />
+    {/if}
+    </li>
 
 <style>
   .event {
