@@ -34,7 +34,7 @@
 </section>
 
 <!-- 01 — About me -->
-<section>
+<section class="about-me">
   <div class="label">01 — About me</div>
   {#if data.about.aboutMe}
     <p class="lead">{data.about.aboutMe}</p>
@@ -105,6 +105,7 @@
   .owner {
     display: flex;
     justify-content: center;
+    padding-bottom: 0;
   }
 
   .owner-image {
@@ -113,6 +114,10 @@
     max-width: 20rem;
     border-radius: 50%;
     object-fit: cover;
+  }
+
+  .about-me {
+    padding-top: 1.5rem;
   }
 
   .lead {
