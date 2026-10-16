@@ -71,7 +71,7 @@
 
 	.brand-logo {
 		display: block;
-		height: clamp(12.5rem, 14vw, 13.5rem);
+		height: clamp(10.5rem, 12vw, 11.5rem);
 		width: auto;
 	}
 </style>
