@@ -32,7 +32,46 @@
   }
 
   let modalArtist = $state<ComponentProps<typeof ArtistModal>['artist'] | null>(null);
-</script>
+
+  // Parallax: lad hero-baggrunden følge scroll ved at forskyde den
+  // langsommere end indholdet.
+  let heroEl = $state<HTMLElement | null>(null);
+  let heroBgEl = $state<HTMLElement | null>(null);
+
+  $effect(() => {
+    const hero = heroEl;
+    const bg = heroBgEl;
+    if (!hero || !bg) return;
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    let frame = 0;
+
+    const update = () => {
+      frame = 0;
+      const rect = hero.getBoundingClientRect();
+      // Hvor langt hero-sektionen er rullet forbi toppen af viewporten.
+      const scrolled = -rect.top;
+      // Bagrunden forskydes med halv hastighed for en parallax-effekt.
+      bg.style.transform = `translate3d(0, ${scrolled * 0.5}px, 0)`;
+    };
+
+    const onScroll = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(update);
+    };
+
+    update();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  });
+  </script>
 
 <svelte:head>
   <title>Tour Group</title>
@@ -40,8 +79,8 @@
 </svelte:head>
 
 <!-- Hero -->
-<section class="hero" style="--hero-bg: url({data.heroBackgroundUrl});">
-  <div class="hero-bg" aria-hidden="true"></div>
+<section class="hero" bind:this={heroEl} style="--hero-bg: url({data.heroBackgroundUrl});">
+  <div class="hero-bg" bind:this={heroBgEl} aria-hidden="true"></div>
   <div class="label">Lighting for events</div>
   <h1>
     <img class="hero-logo" src={data.logoUrl} alt="Tour Group" />
@@ -304,24 +343,17 @@
 
   .hero-bg {
     position: absolute;
-    inset: 0;
+    /* Gør baggrunden højere end hero-sektionen, så den kan forskyde sig
+       (parallax) uden at afsløre kanterne. */
+    inset: -75% 0;
     z-index: 0;
     background-image: var(--hero-bg);
     background-size: cover;
     background-position: center;
-    /* Følger scroll (parallax): billedet sidder fast mens indholdet ruller. */
-    background-attachment: fixed;
+    will-change: transform;
     filter: grayscale(1);
     opacity: 0.9;
     pointer-events: none;
-  }
-
-  /* På touch-enheder virker background-attachment: fixed dårligt, så vi
-     falder tilbage til et almindeligt baggrundsbillede der ruller med. */
-  @media (hover: none) and (pointer: coarse) {
-    .hero-bg {
-      background-attachment: scroll;
-    }
   }
 
   /* Light scrim only near the edges so the image stays vivid while the
