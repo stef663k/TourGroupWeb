@@ -58,8 +58,8 @@ function createFakeD1() {
 	};
 }
 
-function makePlatform(db: unknown) {
-	return { env: { DB: db } } as App.Platform;
+function makePlatform(db: unknown, r2PublicUrl?: string) {
+	return { env: { DB: db, R2_PUBLIC_URL: r2PublicUrl } } as App.Platform;
 }
 
 type ActionResult = { status?: number; error?: string; success?: boolean };
@@ -78,7 +78,10 @@ async function runUpdateAbout(
 	return result as unknown as ActionResult;
 }
 
-type LoadResult = { about: { aboutMe: string | null; whatICanDo: string | null } };
+type LoadResult = {
+	about: { aboutMe: string | null; whatICanDo: string | null };
+	ownerImageUrl: string;
+};
 
 async function runLoad(platform: unknown): Promise<LoadResult> {
 	return (await load({ platform } as never)) as unknown as LoadResult;
@@ -130,7 +133,24 @@ describe('om load', () => {
 		expect(data.about.aboutMe).toBe('Hej, jeg er...');
 		expect(data.about.whatICanDo).toBe('Lysdesign og produktion');
 	});
-});
+
+	it('returnerer ejerens billede-URL via /images-ruten som standard', async () => {
+		const db = createFakeD1();
+		const data = await runLoad(makePlatform(db));
+		expect(data.ownerImageUrl).toBe('/images/Lukas/rounded');
+	});
+
+	it('bruger R2_PUBLIC_URL til ejerens billede når den er sat', async () => {
+		const db = createFakeD1();
+		const data = await runLoad(makePlatform(db, 'https://cdn.example.com'));
+		expect(data.ownerImageUrl).toBe('https://cdn.example.com/Lukas/rounded');
+	});
+
+	it('giver ejerens billede-URL også når databasen ikke er konfigureret', async () => {
+		const data = await runLoad(undefined);
+		expect(data.ownerImageUrl).toBe('/images/Lukas/rounded');
+	});
+	});
 
 describe('updateAbout action', () => {
 	let errorSpy: ReturnType<typeof vi.spyOn>;

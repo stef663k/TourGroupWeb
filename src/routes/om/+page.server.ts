@@ -1,12 +1,18 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getAbout, updateAbout } from '$lib/server/db';
+import { publicImageUrl } from '$lib/server/storage';
 
 const MAX_LENGTH = 5000;
 
+/** R2-nøgle for ejerens portrætbillede på om-siden. */
+const OWNER_IMAGE_KEY = 'Lukas/rounded.png';
+
 export const load: PageServerLoad = async ({ platform }) => {
 	const db = platform?.env?.DB;
-	if (!db) return { about: { aboutMe: null, whatICanDo: null } };
+	const baseUrl = platform?.env?.R2_PUBLIC_URL;
+	const ownerImageUrl = publicImageUrl(OWNER_IMAGE_KEY, baseUrl);
+	if (!db) return { about: { aboutMe: null, whatICanDo: null }, ownerImageUrl };
 
 	// Hvis databasen ikke er sat op endnu (fx manglende migrationer), må siden
 	// ikke kaste en 500. Vi logger fejlen og viser tomt indhold i stedet.
@@ -16,11 +22,12 @@ export const load: PageServerLoad = async ({ platform }) => {
 			about: {
 				aboutMe: row?.about_me ?? null,
 				whatICanDo: row?.what_i_can_do ?? null
-			}
+			},
+			ownerImageUrl
 		};
 	} catch (err) {
 		console.error('Kunne ikke hente about-indhold:', err);
-		return { about: { aboutMe: null, whatICanDo: null } };
+		return { about: { aboutMe: null, whatICanDo: null }, ownerImageUrl };
 	}
 };
 

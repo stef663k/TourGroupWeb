@@ -28,6 +28,11 @@
   <p class="lead">Lighting design and production for events.</p>
 </section>
 
+<!-- Owner image -->
+<section class="owner">
+  <img class="owner-image" src={data.ownerImageUrl} alt="Lukas Laukiss" />
+</section>
+
 <!-- 01 — About me -->
 <section>
   <div class="label">01 — About me</div>
@@ -97,6 +102,19 @@
 </section>
 
 <style>
+  .owner {
+    display: flex;
+    justify-content: center;
+  }
+
+  .owner-image {
+    display: block;
+    width: 100%;
+    max-width: 20rem;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
   .lead {
     font-size: 1.25rem;
     color: #cccccc;
