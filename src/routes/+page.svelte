@@ -309,8 +309,19 @@
     background-image: var(--hero-bg);
     background-size: cover;
     background-position: center;
+    /* Følger scroll (parallax): billedet sidder fast mens indholdet ruller. */
+    background-attachment: fixed;
+    filter: grayscale(1);
     opacity: 0.9;
     pointer-events: none;
+  }
+
+  /* På touch-enheder virker background-attachment: fixed dårligt, så vi
+     falder tilbage til et almindeligt baggrundsbillede der ruller med. */
+  @media (hover: none) and (pointer: coarse) {
+    .hero-bg {
+      background-attachment: scroll;
+    }
   }
 
   /* Light scrim only near the edges so the image stays vivid while the
