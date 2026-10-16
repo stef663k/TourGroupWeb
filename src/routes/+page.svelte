@@ -309,7 +309,7 @@
     background-image: var(--hero-bg);
     background-size: cover;
     background-position: center;
-    opacity: 0.5;
+    opacity: 0.6;
     pointer-events: none;
   }
 
