@@ -32,45 +32,6 @@
   }
 
   let modalArtist = $state<ComponentProps<typeof ArtistModal>['artist'] | null>(null);
-
-  // Parallax: lad hero-baggrunden følge scroll ved at forskyde den
-  // langsommere end indholdet.
-  let heroEl = $state<HTMLElement | null>(null);
-  let heroBgEl = $state<HTMLElement | null>(null);
-
-  $effect(() => {
-    const hero = heroEl;
-    const bg = heroBgEl;
-    if (!hero || !bg) return;
-
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-    let frame = 0;
-
-    const update = () => {
-      frame = 0;
-      const rect = hero.getBoundingClientRect();
-      // Hvor langt hero-sektionen er rullet forbi toppen af viewporten.
-      const scrolled = -rect.top;
-      // Bagrunden forskydes med halv hastighed for en parallax-effekt.
-      bg.style.transform = `translate3d(0, ${scrolled * 0.5}px, 0)`;
-    };
-
-    const onScroll = () => {
-      if (frame) return;
-      frame = requestAnimationFrame(update);
-    };
-
-    update();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll);
-
-    return () => {
-      if (frame) cancelAnimationFrame(frame);
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
-    };
-  });
   </script>
 
 <svelte:head>
@@ -78,9 +39,11 @@
   <meta name="description" content="Tour Group — lighting design and production for events." />
 </svelte:head>
 
+<!-- Fast baggrundsbillede der dækker hele siden og følger med ved scroll -->
+<div class="page-bg" aria-hidden="true" style="--hero-bg: url({data.heroBackgroundUrl});"></div>
+
 <!-- Hero -->
-<section class="hero" bind:this={heroEl} style="--hero-bg: url({data.heroBackgroundUrl});">
-  <div class="hero-bg" bind:this={heroBgEl} aria-hidden="true"></div>
+<section class="hero">
   <div class="label">Lighting for events</div>
   <h1>
     <img class="hero-logo" src={data.logoUrl} alt="Tour Group" />
@@ -329,45 +292,31 @@
     margin-inline: auto;
   }
 
-  /* Muted background image behind the hero content. */
-  .hero {
-    position: relative;
-    isolation: isolate;
-    overflow: hidden;
-  }
-
-  .hero :global(> *) {
-    position: relative;
-    z-index: 1;
-  }
-
-  .hero-bg {
-    position: absolute;
-    /* Gør baggrunden højere end hero-sektionen, så den kan forskyde sig
-       (parallax) uden at afsløre kanterne. */
-    inset: -75% 0;
-    z-index: 0;
+  /* Fast baggrundsbillede der dækker hele viewporten og bliver siddende
+     mens indholdet ruller forbi ovenpå. */
+  .page-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
     background-image: var(--hero-bg);
     background-size: cover;
     background-position: center;
-    will-change: transform;
     filter: grayscale(1);
     opacity: 0.9;
     pointer-events: none;
   }
 
-  /* Light scrim only near the edges so the image stays vivid while the
-     centered hero text remains readable. */
-  .hero-bg::after {
+  /* Dæmpende lag så teksten forbliver læsbar ovenpå billedet. */
+  .page-bg::after {
     content: '';
     position: absolute;
     inset: 0;
-    background: radial-gradient(
-      ellipse at center,
-      rgba(0, 0, 0, 0.55) 0%,
-      rgba(0, 0, 0, 0.2) 55%,
-      rgba(0, 0, 0, 0.02) 100%
-    );
+    background: rgba(10, 10, 10, 0.72);
+  }
+
+  /* Hero er nu blot indhold ovenpå det faste baggrundsbillede. */
+  .hero {
+    position: relative;
   }
 
   .lead {
