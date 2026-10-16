@@ -33,6 +33,22 @@
 
   let editing = $state(false);
   let showModal = $state(false);
+  let cardEl = $state<HTMLElement | null>(null);
+
+  // Luk redigeringspanelet når der klikkes uden for kortet.
+  $effect(() => {
+    if (!editing) return;
+
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (target && cardEl && !cardEl.contains(target)) {
+        editing = false;
+      }
+    };
+
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  });
 
   // Kortet viser kun cover-billedet (det der blev uploadet da eventet blev
   // oprettet). Ekstra billeder vises udelukkende inde i modalen.
@@ -51,7 +67,7 @@
   }
 </script>
 
-<li class="event" id="event-{event.id}">
+<li class="event" id="event-{event.id}" bind:this={cardEl}>
   <div class="event-head">
     <div class="event-info">
       <time>{formatDate(event.event_date)}</time>
