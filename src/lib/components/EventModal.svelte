@@ -464,9 +464,10 @@
   }
 
   .link-row a {
-    color: var(--accent);
+    color: var(--fg);
     font-size: 0.9375rem;
     overflow-wrap: anywhere;
+    border-bottom: none;
   }
 
   .images-section {
