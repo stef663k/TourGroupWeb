@@ -230,6 +230,13 @@
         <p class="description">{event.details}</p>
       {/if}
 
+      {#if event.link}
+        <p class="link-row">
+          <span class="link-label">Link</span>
+          <a href={event.link} target="_blank" rel="noopener noreferrer">{event.link}</a>
+        </p>
+      {/if}
+
       <div class="images-section">
         <h3>Photos</h3>
 
@@ -438,6 +445,28 @@
     color: #cccccc;
     font-size: 0.9375rem;
     text-align: left;
+  }
+
+  .link-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin: 0;
+    text-align: left;
+  }
+
+  .link-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+
+  .link-row a {
+    color: var(--accent);
+    font-size: 0.9375rem;
+    overflow-wrap: anywhere;
   }
 
   .images-section {
