@@ -82,7 +82,7 @@
 </section>
 
 <!-- 01 — Artists -->
-<section>
+<section class:half-bottom={data.owner && data.artists.length > 1}>
   <div class="label">01 — Artists</div>
   <ul class="work">
     {#each data.artists as work (work.id)}
@@ -485,6 +485,12 @@
   .work-row .icon-btn svg {
     width: 1.0625rem;
     height: 1.0625rem;
+  }
+
+  /* Mindre luft under artistsektionen når sorteringsknappen vises, så den
+     ikke havner langt fra "Create artist" nedenunder. */
+  :global(section.half-bottom) {
+    padding-bottom: clamp(1rem, 3vw, 2rem);
   }
 
   /* Sorteringspanel for ejeren, vist under artistlisten. */
