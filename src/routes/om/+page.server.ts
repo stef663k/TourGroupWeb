@@ -8,11 +8,15 @@ const MAX_LENGTH = 5000;
 /** R2-nøgle for ejerens portrætbillede på om-siden. */
 const OWNER_IMAGE_KEY = 'Lukas/rounded.png';
 
+/** R2-nøgle for baggrundsbilledet på om-siden. */
+const ABOUT_BACKGROUND_KEY = 'Lukas/AboutBackground.jpg';
+
 export const load: PageServerLoad = async ({ platform }) => {
 	const db = platform?.env?.DB;
 	const baseUrl = platform?.env?.R2_PUBLIC_URL;
 	const ownerImageUrl = publicImageUrl(OWNER_IMAGE_KEY, baseUrl);
-	if (!db) return { about: { aboutMe: null, whatICanDo: null }, ownerImageUrl };
+	const aboutBackgroundUrl = publicImageUrl(ABOUT_BACKGROUND_KEY, baseUrl);
+	if (!db) return { about: { aboutMe: null, whatICanDo: null }, ownerImageUrl, aboutBackgroundUrl };
 
 	// Hvis databasen ikke er sat op endnu (fx manglende migrationer), må siden
 	// ikke kaste en 500. Vi logger fejlen og viser tomt indhold i stedet.
@@ -23,12 +27,13 @@ export const load: PageServerLoad = async ({ platform }) => {
 				aboutMe: row?.about_me ?? null,
 				whatICanDo: row?.what_i_can_do ?? null
 			},
-			ownerImageUrl
+			ownerImageUrl,
+			aboutBackgroundUrl
 		};
-	} catch (err) {
+		} catch (err) {
 		console.error('Kunne ikke hente about-indhold:', err);
-		return { about: { aboutMe: null, whatICanDo: null }, ownerImageUrl };
-	}
+		return { about: { aboutMe: null, whatICanDo: null }, ownerImageUrl, aboutBackgroundUrl };
+		}
 };
 
 export const actions: Actions = {

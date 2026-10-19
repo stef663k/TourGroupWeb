@@ -22,11 +22,14 @@ import {
 	MAX_IMAGE_BYTES
 } from '$lib/server/storage';
 
+/** R2-nøgle for baggrundsbilledet på events-siden. */
+const EVENTS_BACKGROUND_KEY = 'Lukas/EventBackghround.jpg';
+
 export const load: PageServerLoad = async ({ platform }) => {
 	const db = platform?.env?.DB;
-	if (!db) return { events: [], artists: [], imageBaseUrl: undefined };
-
 	const baseUrl = platform?.env?.R2_PUBLIC_URL;
+	const eventBackgroundUrl = publicImageUrl(EVENTS_BACKGROUND_KEY, baseUrl);
+	if (!db) return { events: [], artists: [], imageBaseUrl: undefined, eventBackgroundUrl };
 
 	// Artisterne hentes til "Link an artist"-vælgeren på opret/opdater-formularen.
 	let artists: Awaited<ReturnType<typeof listArtists>> = [];
@@ -43,7 +46,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 		events = await listEvents(db);
 	} catch (err) {
 		console.error('Kunne ikke hente events:', err);
-		return { events: [], artists, imageBaseUrl: baseUrl };
+		return { events: [], artists, imageBaseUrl: baseUrl, eventBackgroundUrl };
 	}
 
 	const withImages = await Promise.all(
@@ -71,7 +74,8 @@ export const load: PageServerLoad = async ({ platform }) => {
 	return {
 		events: withImages,
 		artists: artists.map((a) => ({ id: a.id, name: a.name })),
-		imageBaseUrl: baseUrl
+		imageBaseUrl: baseUrl,
+		eventBackgroundUrl
 	};
 };
 

@@ -324,7 +324,8 @@ type LoadResult = {
 	}[];
 	artists: { id: number; name: string }[];
 	imageBaseUrl: string | undefined;
-};
+	eventBackgroundUrl: string;
+	};
 
 async function runLoad(platform: unknown): Promise<LoadResult> {
 	return (await load({ platform } as never)) as unknown as LoadResult;
@@ -361,7 +362,24 @@ describe('events load', () => {
 		const data = await runLoad(makePlatform(brokenDb));
 		expect(data.events).toEqual([]);
 		expect(errorSpy).toHaveBeenCalled();
-	});
+		});
+
+		it('returnerer baggrundsbilledets URL via /images-ruten som standard', async () => {
+		const db = createFakeD1();
+		const data = await runLoad(makePlatform(db));
+		expect(data.eventBackgroundUrl).toBe('/images/Lukas/EventBackghround.jpg');
+		});
+
+		it('bruger R2_PUBLIC_URL til baggrundsbilledet når den er sat', async () => {
+		const db = createFakeD1();
+		const data = await runLoad(makePlatform(db, 'https://cdn.example.com'));
+		expect(data.eventBackgroundUrl).toBe('https://cdn.example.com/Lukas/EventBackghround.jpg');
+		});
+
+		it('giver baggrundsbilledets URL også når databasen ikke er konfigureret', async () => {
+		const data = await runLoad(undefined);
+		expect(data.eventBackgroundUrl).toBe('/images/Lukas/EventBackghround.jpg');
+		});
 
 	it('kortlægger events og deres billed-URLer', async () => {
 		const db = createFakeD1();

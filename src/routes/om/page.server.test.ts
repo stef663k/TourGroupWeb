@@ -81,6 +81,7 @@ async function runUpdateAbout(
 type LoadResult = {
 	about: { aboutMe: string | null; whatICanDo: string | null };
 	ownerImageUrl: string;
+	aboutBackgroundUrl: string;
 };
 
 async function runLoad(platform: unknown): Promise<LoadResult> {
@@ -150,7 +151,24 @@ describe('om load', () => {
 		const data = await runLoad(undefined);
 		expect(data.ownerImageUrl).toBe('/images/Lukas/rounded.png');
 		});
-	});
+
+		it('returnerer baggrundsbilledets URL via /images-ruten som standard', async () => {
+		const db = createFakeD1();
+		const data = await runLoad(makePlatform(db));
+		expect(data.aboutBackgroundUrl).toBe('/images/Lukas/AboutBackground.jpg');
+		});
+
+		it('bruger R2_PUBLIC_URL til baggrundsbilledet når den er sat', async () => {
+		const db = createFakeD1();
+		const data = await runLoad(makePlatform(db, 'https://cdn.example.com'));
+		expect(data.aboutBackgroundUrl).toBe('https://cdn.example.com/Lukas/AboutBackground.jpg');
+		});
+
+		it('giver baggrundsbilledets URL også når databasen ikke er konfigureret', async () => {
+		const data = await runLoad(undefined);
+		expect(data.aboutBackgroundUrl).toBe('/images/Lukas/AboutBackground.jpg');
+		});
+		});
 
 describe('updateAbout action', () => {
 	let errorSpy: ReturnType<typeof vi.spyOn>;

@@ -22,10 +22,13 @@
   <meta name="description" content="About Tour Group" />
 </svelte:head>
 
+<!-- Fast baggrundsbillede der dækker hele siden og følger med ved scroll -->
+<div class="page-bg" aria-hidden="true" style="--hero-bg: url({data.aboutBackgroundUrl});"></div>
+
 <!-- Hero -->
 <section class="hero">
   <h1>About</h1>
-  <p class="lead">Lighting design and production for events.</p>
+  <p class="lead">Lighting, set design and production for events.</p>
 </section>
 
 <!-- Owner image -->
@@ -102,6 +105,33 @@
 </section>
 
 <style>
+  /* Fast baggrundsbillede der dækker hele viewporten og bliver siddende
+     mens indholdet ruller forbi ovenpå. */
+  .page-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-image: var(--hero-bg);
+    background-size: cover;
+    background-position: center;
+    filter: grayscale(1);
+    opacity: 0.9;
+    pointer-events: none;
+  }
+
+  /* Dæmpende lag så teksten forbliver læsbar ovenpå billedet. */
+  .page-bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 10, 10, 0.72);
+  }
+
+  /* Hero er nu blot indhold ovenpå det faste baggrundsbillede. */
+  .hero {
+    position: relative;
+  }
+
   .owner {
     display: flex;
     justify-content: center;

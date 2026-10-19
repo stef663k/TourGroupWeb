@@ -11,6 +11,9 @@
   <meta name="description" content="Events that Tour Group has helped produce." />
 </svelte:head>
 
+<!-- Fast baggrundsbillede der dækker hele siden og følger med ved scroll -->
+<div class="page-bg" aria-hidden="true" style="--hero-bg: url({data.eventBackgroundUrl});"></div>
+
 <!-- Hero -->
 <section class="hero">
   <div class="label">Events</div>
@@ -49,6 +52,33 @@
 {/if}
 
 <style>
+  /* Fast baggrundsbillede der dækker hele viewporten og bliver siddende
+     mens indholdet ruller forbi ovenpå. */
+  .page-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-image: var(--hero-bg);
+    background-size: cover;
+    background-position: center;
+    filter: grayscale(1);
+    opacity: 0.9;
+    pointer-events: none;
+  }
+
+  /* Dæmpende lag så teksten forbliver læsbar ovenpå billedet. */
+  .page-bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 10, 10, 0.72);
+  }
+
+  /* Hero er nu blot indhold ovenpå det faste baggrundsbillede. */
+  .hero {
+    position: relative;
+  }
+
   .lead {
     font-size: 1.25rem;
     color: #cccccc;
