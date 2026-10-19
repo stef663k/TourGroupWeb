@@ -550,10 +550,14 @@
   .images li {
     position: relative;
     flex: 0 0 auto;
+    max-width: 100%;
   }
 
   .images img {
-    height: 18rem;
+    /* Fast højde på store skærme, men skalerer ned på smalle skærme, så
+       brede billeder ikke løber ud over modalens kant. Bredden følger
+       billedets eget format (bevarer proportioner, ingen beskæring). */
+    height: min(18rem, 60vw);
     width: auto;
     max-width: 100%;
     display: block;
