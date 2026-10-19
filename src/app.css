@@ -34,11 +34,9 @@
   /* Navigation: logoets bredde og den nav-højde der følger af den.
      Logoet er 931×150 (≈6,207:1), så højden = bredde × 150/931.
      Ændres bredden her, følger nav-linjen automatisk med.
-     --menu-width = menubredde, bruges til at undgå overlap med logoet.
      Skal holdes i sync med .brand-logo i src/routes/+layout.svelte. */
   --brand-logo-width:  clamp(7rem, 26vw, 14rem);
   --brand-logo-height: calc(var(--brand-logo-width) * 150 / 931);
-  --menu-width:       min(52vw, 31rem);
   --nav-padding-block: 0.75rem;
   /* Nav-højde = logo-højde + lodret padding (top + bund). */
   --nav-height:       calc(var(--brand-logo-height) + 2 * var(--nav-padding-block));

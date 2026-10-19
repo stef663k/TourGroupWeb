@@ -80,17 +80,14 @@
 		pointer-events: none;
 	}
 
-	/* Logoen skaleres efter den plads der er tilbage når menuen er trukket
-	   fra, så de to aldrig overlapper. Bredden kommer fra
-	   --brand-logo-width i app.css, som nav-højden også læser – derfor
-	   følger nav-linjen altid logoets størrelse. */
+	/* Bredden kommer udelukkende fra --brand-logo-width i app.css, som
+	   nav-højden også læser – derfor følger nav-linjen logoets størrelse.
+	   Bemærk: ingen max-width her. .brand er absolut positioneret uden
+	   width/right, så en max-width i procent ville blive målt mod den
+	   shrink-to-fit-boks og overskrive bredden nedenfor. */
 	.brand-logo {
 		display: block;
-		width: min(
-			calc(100vw - var(--menu-width) - 6rem),
-			var(--brand-logo-width)
-		);
-		max-width: 100%;
+		width: var(--brand-logo-width);
 		/* Højden følger logoets bredde (931×150), så billedet ikke forskydes. */
 		aspect-ratio: 931 / 150;
 		height: auto;
