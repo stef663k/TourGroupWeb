@@ -32,7 +32,7 @@
   }
 
   let modalArtist = $state<ComponentProps<typeof ArtistModal>['artist'] | null>(null);
-  </script>
+</script>
 
 <svelte:head>
   <title>Tour Group</title>
@@ -105,6 +105,14 @@
           </form>
         {/if}
       </li>
+      {#if work.latestEventId}
+        <li class="work-foot">
+          <a class="work-latest" href="/events#event-{work.latestEventId}">
+            latest event
+            <span class="work-arrow" aria-hidden="true">→</span>
+          </a>
+        </li>
+      {/if}
       {#if data.owner && editingId === work.id}
         <li class="edit-row">
           <form method="POST" action="?/updateArtist" use:enhance={() => async ({ update }) => { await update(); editingId = null; }} class="edit-form">
@@ -367,6 +375,14 @@
     height: 1.0625rem;
   }
 
+  .work-foot {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
+    padding: 0 clamp(0.5rem, 2vw, 1rem) clamp(0.75rem, 2vw, 1rem);
+  }
+
   .edit-row {
     padding: 0 clamp(0.5rem, 2vw, 1rem) clamp(1rem, 3vw, 1.5rem);
   }
@@ -448,6 +464,11 @@
     border-top: 1px solid var(--line-strong);
   }
 
+  /* "latest event" hører til rækken ovenfor, så der må ikke være en skillelinje imellem. */
+  .work-row + .work-foot {
+    border-top: none;
+  }
+
   .work-link {
     display: grid;
     grid-template-columns: 1fr auto;
@@ -479,6 +500,35 @@
     color: var(--fg-muted);
     font-size: 0.875rem;
     white-space: nowrap;
+  }
+
+  .work-latest {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    color: var(--fg-muted);
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    border-bottom: none;
+    transition: color 0.2s var(--ease);
+  }
+
+  .work-latest:hover,
+  .work-latest:focus-visible {
+    color: var(--accent);
+  }
+
+  .work-latest:hover .work-arrow,
+  .work-latest:focus-visible .work-arrow {
+    color: var(--accent);
+    transform: translateX(0.25rem);
+  }
+
+  .work-arrow {
+    color: var(--fg-muted);
+    font-size: clamp(1rem, 2.5vw, 1.25rem);
+    transition: transform 0.2s var(--ease), color 0.2s var(--ease);
   }
 
   .partners {
