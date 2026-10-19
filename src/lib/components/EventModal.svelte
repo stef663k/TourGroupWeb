@@ -489,6 +489,7 @@
     color: #cccccc;
     font-size: 0.9375rem;
     text-align: left;
+    white-space: pre-line;
   }
 
   .link-row {
