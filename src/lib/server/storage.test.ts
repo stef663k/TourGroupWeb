@@ -123,15 +123,15 @@ describe('buildImageKey', () => {
 });
 
 describe('buildArtistImageKey', () => {
-	it('lægger profilbilledet under artist/<slug>/', () => {
+	it('lægger profilbilledet under Artist/<slug>/', () => {
 		expect(buildArtistImageKey('faustix', 'image/jpeg', 'abc-123')).toBe(
-			'artist/faustix/abc-123.jpg'
+			'Artist/faustix/abc-123.jpg'
 		);
 	});
 
 	it('bruger den korrekte endelse pr. type', () => {
-		expect(buildArtistImageKey('a', 'image/png', 'x')).toBe('artist/a/x.png');
-		expect(buildArtistImageKey('a', 'image/webp', 'x')).toBe('artist/a/x.webp');
+		expect(buildArtistImageKey('a', 'image/png', 'x')).toBe('Artist/a/x.png');
+		expect(buildArtistImageKey('a', 'image/webp', 'x')).toBe('Artist/a/x.webp');
 	});
 });
 

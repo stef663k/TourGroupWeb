@@ -13,8 +13,8 @@ function createFakeD1() {
 		name: string;
 		years: string | null;
 		details: string | null;
-		image_key: string | null;
-		image_content_type: string | null;
+		image_key?: string | null;
+		image_content_type?: string | null;
 		created_at: number;
 	}[] = [];
 	let nextLinkId = 1;

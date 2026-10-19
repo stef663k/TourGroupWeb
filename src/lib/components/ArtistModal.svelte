@@ -251,12 +251,12 @@
 
   .modal-thumb {
     flex: 0 0 auto;
-    width: 2.75rem;
-    height: 2.75rem;
+    width: clamp(3.5rem, 8vw, 5rem);
+    height: clamp(3.5rem, 8vw, 5rem);
     object-fit: cover;
     border: 1px solid var(--line);
-    border-radius: 0.375rem;
-  }
+    border-radius: 0.5rem;
+    }
 
   .modal-head h2 {
     margin: 0;

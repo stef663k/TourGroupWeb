@@ -516,12 +516,13 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 2.75rem;
-    height: 2.75rem;
+    width: clamp(4rem, 9vw, 6rem);
+    height: clamp(4rem, 9vw, 6rem);
     overflow: hidden;
     background: var(--bg-soft);
     border: 1px solid var(--line);
-    border-radius: 0.375rem;
+    border-radius: 0.5rem;
+    flex-shrink: 0;
   }
 
   .work-thumb img {
@@ -532,7 +533,7 @@
   }
 
   .work-thumb-placeholder {
-    font-size: 1.125rem;
+    font-size: clamp(1.5rem, 4vw, 2rem);
     font-weight: 500;
     color: var(--fg-muted);
     text-transform: uppercase;
