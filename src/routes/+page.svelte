@@ -63,13 +63,11 @@
           aria-haspopup="dialog"
           onclick={() => (modalArtist = work)}
         >
-          <span class="work-thumb" aria-hidden="true">
-            {#if work.imageUrl}
+          {#if work.imageUrl}
+            <span class="work-thumb" aria-hidden="true">
               <img src={work.imageUrl} alt="" loading="lazy" />
-            {:else}
-              <span class="work-thumb-placeholder">{work.name.slice(0, 1)}</span>
-            {/if}
-          </span>
+            </span>
+          {/if}
           <span class="work-name">{work.name}</span>
           {#if work.years}
             <span class="work-years">{work.years}</span>
@@ -498,7 +496,7 @@
 
   .work-link {
     display: grid;
-    grid-template-columns: auto 1fr auto;
+    display: flex;
     align-items: center;
     gap: 0.75rem;
     width: 100%;
@@ -510,34 +508,27 @@
     border: none;
     cursor: pointer;
     transition: color 0.2s var(--ease);
-  }
+    }
 
-  .work-thumb {
+    .work-thumb {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: clamp(4rem, 9vw, 6rem);
-    height: clamp(4rem, 9vw, 6rem);
+    width: clamp(5rem, 12vw, 9rem);
+    height: clamp(5rem, 12vw, 9rem);
     overflow: hidden;
     background: var(--bg-soft);
     border: 1px solid var(--line);
     border-radius: 0.5rem;
     flex-shrink: 0;
-  }
+    }
 
-  .work-thumb img {
+    .work-thumb img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
-  }
-
-  .work-thumb-placeholder {
-    font-size: clamp(1.5rem, 4vw, 2rem);
-    font-weight: 500;
-    color: var(--fg-muted);
-    text-transform: uppercase;
-  }
+    }
 
   .work-link:hover,
   .work-link:focus-visible {
@@ -545,12 +536,14 @@
   }
 
   .work-name {
+    flex: 1 1 auto;
     text-align: center;
     font-size: clamp(1rem, 2.5vw, 1.25rem);
     letter-spacing: 0.02em;
   }
 
   .work-years {
+    flex: 0 0 auto;
     color: var(--fg-muted);
     font-size: 0.875rem;
     white-space: nowrap;

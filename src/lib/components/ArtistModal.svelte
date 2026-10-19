@@ -251,8 +251,8 @@
 
   .modal-thumb {
     flex: 0 0 auto;
-    width: clamp(3.5rem, 8vw, 5rem);
-    height: clamp(3.5rem, 8vw, 5rem);
+    width: clamp(4.5rem, 10vw, 7rem);
+    height: clamp(4.5rem, 10vw, 7rem);
     object-fit: cover;
     border: 1px solid var(--line);
     border-radius: 0.5rem;
