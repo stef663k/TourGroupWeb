@@ -4,6 +4,7 @@ import {
 	createArtist,
 	deleteArtist,
 	getArtist,
+	reorderArtists,
 	updateArtist,
 	updateArtistDetails,
 	updateArtistImage,
@@ -39,6 +40,7 @@ function createFakeD1(): FakeD1 {
 		details: string | null;
 		image_key: string | null;
 		image_content_type: string | null;
+		sort_order: number;
 		created_at: number;
 	}[] = [];
 	const links: {
@@ -55,10 +57,13 @@ function createFakeD1(): FakeD1 {
 		let args: unknown[] = [];
 		const normalized = () => sql.replace(/\s+/g, ' ').trim();
 
+		const exec = (statement: () => Promise<unknown>) => ({ __exec: statement });
+
 		const firstStatement = <T>() => {
 			const q = normalized();
-			if (q.startsWith('INSERT INTO artists (name, years) VALUES')) {
+			if (q.startsWith('INSERT INTO artists (name, years, sort_order) VALUES')) {
 				const [name, years] = args as [string, string | null];
+				const nextSortOrder = rows.reduce((max, r) => Math.max(max, r.sort_order), -1) + 1;
 				const row = {
 					id: nextId++,
 					name,
@@ -66,6 +71,7 @@ function createFakeD1(): FakeD1 {
 					details: null,
 					image_key: null,
 					image_content_type: null,
+					sort_order: nextSortOrder,
 					created_at: Math.floor(Date.now() / 1000)
 				};
 				rows.push(row);
@@ -73,7 +79,7 @@ function createFakeD1(): FakeD1 {
 			}
 			if (
 				q.startsWith(
-					'SELECT id, name, years, details, image_key, image_content_type, created_at FROM artists WHERE id'
+					'SELECT id, name, years, details, image_key, image_content_type, sort_order, created_at FROM artists WHERE id'
 				)
 			) {
 				const [id] = args as [number];
@@ -126,28 +132,12 @@ function createFakeD1(): FakeD1 {
 			const q = normalized();
 			if (
 				q.startsWith(
-					'SELECT artists.id, artists.name, artists.years, artists.details, artists.image_key, artists.image_content_type'
+					'SELECT id, name, years, details, image_key, image_content_type, sort_order, created_at FROM artists ORDER BY sort_order'
 				)
 			) {
-				// Emulerer den korrelerede underforespørgsel: nyeste event-dato pr. artist.
-				const latestDateOf = (artistId: number) => {
-					let latest: string | null = null;
-					for (const e of events) {
-						if (e.artist_id === artistId && e.event_date !== null) {
-							if (latest === null || e.event_date > latest) latest = e.event_date;
-						}
-					}
-					return latest;
-				};
-				const sorted = [...rows].sort((a, b) => {
-					const aDate = latestDateOf(a.id);
-					const bDate = latestDateOf(b.id);
-					const aNull = aDate === null ? 1 : 0;
-					const bNull = bDate === null ? 1 : 0;
-					if (aNull !== bNull) return aNull - bNull;
-					if (aDate !== bDate) return (bDate ?? '').localeCompare(aDate ?? '');
-					return b.id - a.id;
-				});
+				const sorted = [...rows].sort(
+					(a, b) => a.sort_order - b.sort_order || a.id - b.id
+				);
 				return sorted as T[];
 			}
 			if (
@@ -172,6 +162,12 @@ function createFakeD1(): FakeD1 {
 				if (idx >= 0) rows.splice(idx, 1);
 				return { success: true };
 			}
+			if (q.startsWith('UPDATE artists SET sort_order = ?1 WHERE id = ?2')) {
+				const [sortOrder, id] = args as [number, number];
+				const row = rows.find((r) => r.id === id);
+				if (row) row.sort_order = sortOrder;
+				return { success: true };
+			}
 			if (q.startsWith('DELETE FROM artist_links WHERE id')) {
 				const [id] = args as [number];
 				const idx = links.findIndex((l) => l.id === id);
@@ -194,12 +190,28 @@ function createFakeD1(): FakeD1 {
 			},
 			async all<T>() {
 				return { results: allStatement<T>(), success: true };
-			}
+			},
+			__exec: async () => runStatement()
 		};
 		return statement;
-	};
+		};
 
-	return { prepare, _events: events, _links: links } as unknown as FakeD1;
+			// D1's batch() kører statementene sekventielt. Stubben genkører blot
+			// run-logikken for hvert statement, hvilket er nok for disse tests.
+			const batch = async (statements: unknown[]) => {
+			const results: unknown[] = [];
+			for (const entry of statements) {
+			const exec = (entry as { __exec?: () => Promise<unknown> }).__exec;
+			results.push(exec ? await exec() : { success: true });
+			}
+			return results;
+			};
+
+			const db = { prepare, batch };
+
+			return { ...db, _events: events, _links: links, _rows: rows } as unknown as FakeD1 & {
+			batch: typeof batch;
+			};
 }
 
 describe('artists', () => {
@@ -229,7 +241,30 @@ describe('artists', () => {
 		expect(created.years).toBe('24-26');
 	});
 
-	it('sorterer efter nyeste tilknyttede events dato (nyeste først)', async () => {
+	it('sorterer efter sort_order (manuelt sat rækkefølge)', async () => {
+		const fake = createFakeD1();
+		const first = await createArtist(fake, { name: 'Først' });
+		const second = await createArtist(fake, { name: 'Derefter' });
+		const third = await createArtist(fake, { name: 'Sidst' });
+
+		await reorderArtists(fake, [third.id, first.id, second.id]);
+
+		const rows = await listArtists(fake);
+		expect(rows.map((r) => r.name)).toEqual(['Sidst', 'Først', 'Derefter']);
+	});
+
+	it('nye artister lægges nederst i rækkefølgen', async () => {
+		const fake = createFakeD1();
+		await createArtist(fake, { name: 'A' });
+		await createArtist(fake, { name: 'B' });
+		const ny = await createArtist(fake, { name: 'Ny' });
+
+		const rows = await listArtists(fake);
+		expect(rows.map((r) => r.name)).toEqual(['A', 'B', 'Ny']);
+		expect(ny.sort_order).toBe(2);
+	});
+
+	it('sorterer ikke længere automatisk efter event-datoer', async () => {
 		const fake = createFakeD1();
 		const gammel = await createArtist(fake, { name: 'Gammel' });
 		const ny = await createArtist(fake, { name: 'Ny' });
@@ -239,10 +274,14 @@ describe('artists', () => {
 		);
 
 		const rows = await listArtists(fake);
-		expect(rows.map((r) => r.name)).toEqual(['Ny', 'Gammel']);
+		expect(rows.map((r) => r.name)).toEqual(['Gammel', 'Ny']);
 	});
 
-	it('bruger artistens nyeste event når flere er tilknyttet', async () => {
+	it('reorderArtists gør intet ved en tom liste', async () => {
+		await expect(reorderArtists(db, [])).resolves.toBeUndefined();
+	});
+
+	it('bevarer rækkefølgen når en artist har flere events', async () => {
 		const fake = createFakeD1();
 		const a = await createArtist(fake, { name: 'A' });
 		const b = await createArtist(fake, { name: 'B' });
@@ -256,27 +295,13 @@ describe('artists', () => {
 		expect(rows.map((r) => r.name)).toEqual(['A', 'B']);
 	});
 
-	it('placerer artister uden tilknyttet event nederst', async () => {
+	it('placerer artister uden tilknyttet event efter dem med event i indsættelsesrækkefølge', async () => {
 		const fake = createFakeD1();
-		const udenEvent = await createArtist(fake, { name: 'Uden event' });
-		const medEvent = await createArtist(fake, { name: 'Med event' });
-		fake._events.push({ id: 1, event_date: '2026-01-01', artist_id: medEvent.id });
+		await createArtist(fake, { name: 'Uden event' });
+		await createArtist(fake, { name: 'Med event' });
 
 		const rows = await listArtists(fake);
-		expect(rows.map((r) => r.name)).toEqual(['Med event', 'Uden event']);
-	});
-
-	it('placerer event uden dato sammen med dem uden event', async () => {
-		const fake = createFakeD1();
-		const udenDato = await createArtist(fake, { name: 'Uden dato' });
-		const medDato = await createArtist(fake, { name: 'Med dato' });
-		fake._events.push(
-			{ id: 1, event_date: '2026-01-01', artist_id: medDato.id },
-			{ id: 2, event_date: null, artist_id: udenDato.id }
-		);
-
-		const rows = await listArtists(fake);
-		expect(rows.map((r) => r.name)).toEqual(['Med dato', 'Uden dato']);
+		expect(rows.map((r) => r.name)).toEqual(['Uden event', 'Med event']);
 	});
 
 	it('kaster ikke når ingen artister har et tilknyttet event', async () => {
@@ -285,7 +310,7 @@ describe('artists', () => {
 		await createArtist(fake, { name: 'B' });
 
 		const rows = await listArtists(fake);
-		expect(rows.map((r) => r.name)).toEqual(['B', 'A']);
+		expect(rows.map((r) => r.name)).toEqual(['A', 'B']);
 	});
 
 	it('sletter en række', async () => {

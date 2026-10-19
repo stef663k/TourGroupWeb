@@ -32,7 +32,37 @@
   }
 
   let modalArtist = $state<ComponentProps<typeof ArtistModal>['artist'] | null>(null);
-</script>
+
+  // Rækkefølgen ejeren redigerer i. Kopieres fra data.artists når panelet
+  // åbnes, så uenige ændringer ikke overskriver den gemte rækkefølge.
+  let reorderOpen = $state(false);
+  let draftOrder = $state<number[]>([]);
+
+  // Navnene slås op fra data.artists (som altid er den gemte rækkefølge),
+  // så panelet kan vise navne mens rækkefølgen i draftOrder ændres.
+  let artistNameById = $derived(new Map(data.artists.map((artist) => [artist.id, artist.name])));
+  let orderDirty = $derived(
+    draftOrder.length !== data.artists.length ||
+      draftOrder.some((id, index) => data.artists[index]?.id !== id)
+  );
+
+  function openReorder() {
+    draftOrder = data.artists.map((artist) => artist.id);
+    reorderOpen = true;
+  }
+
+  function closeReorder() {
+    reorderOpen = false;
+  }
+
+  function moveArtist(index: number, direction: -1 | 1) {
+    const target = index + direction;
+    if (target < 0 || target >= draftOrder.length) return;
+    const next = [...draftOrder];
+    [next[index], next[target]] = [next[target], next[index]];
+    draftOrder = next;
+  }
+  </script>
 
 <svelte:head>
   <title>Tour Group</title>
@@ -166,11 +196,68 @@
         </li>
       {/if}
     {/each}
-  </ul>
-</section>
+    </ul>
 
-{#if data.owner}
-  <!-- 01b — Opret artist (kun owner) -->
+    {#if data.owner && data.artists.length > 1}
+    <!-- 01a — Sorter artister (kun owner) -->
+    <div class="reorder">
+      {#if !reorderOpen}
+        <button type="button" class="reorder-toggle" onclick={openReorder}>
+          Reorder artists
+        </button>
+      {:else}
+        <form
+          method="POST"
+          action="?/reorderArtists"
+          use:enhance={() => async ({ update, result }) => {
+            await update();
+            if (result.type === 'success') reorderOpen = false;
+          }}
+          class="reorder-form"
+        >
+          <input type="hidden" name="order" value={draftOrder.join(',')} />
+          <p class="reorder-hint">Use the arrows to change the order, then save.</p>
+          <ol class="reorder-list">
+            {#each draftOrder as id, index (id)}
+              <li class="reorder-item">
+                <span class="reorder-name">{artistNameById.get(id) ?? '—'}</span>
+                <span class="reorder-controls">
+                  <button
+                    type="button"
+                    class="icon-btn"
+                    aria-label="Move {artistNameById.get(id) ?? 'artist'} up"
+                    title="Move up"
+                    disabled={index === 0}
+                    onclick={() => moveArtist(index, -1)}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    class="icon-btn"
+                    aria-label="Move {artistNameById.get(id) ?? 'artist'} down"
+                    title="Move down"
+                    disabled={index === draftOrder.length - 1}
+                    onclick={() => moveArtist(index, 1)}
+                  >
+                    ↓
+                  </button>
+                </span>
+              </li>
+            {/each}
+          </ol>
+          <div class="edit-actions">
+            <button type="button" class="cancel" onclick={closeReorder}>Cancel</button>
+            <button type="submit" class="save" disabled={!orderDirty}>Save order</button>
+          </div>
+        </form>
+      {/if}
+    </div>
+    {/if}
+    </section>
+
+    {#if data.owner}
+    <!-- 01b — Opret artist (kun owner) -->
   <section>
     <div class="label">Create artist</div>
     <EventForm
@@ -400,6 +487,113 @@
     height: 1.0625rem;
   }
 
+  /* Sorteringspanel for ejeren, vist under artistlisten. */
+  .reorder {
+    width: 100%;
+    max-width: var(--content-width);
+    margin: clamp(0.75rem, 2vw, 1rem) auto 0;
+  }
+
+  .reorder-toggle {
+    padding: 0.5rem 1.25rem;
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--fg-muted);
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
+  }
+
+  .reorder-toggle:hover,
+  .reorder-toggle:focus-visible {
+    color: var(--fg);
+    border-color: var(--fg-muted);
+  }
+
+  .reorder-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: clamp(0.75rem, 2vw, 1rem);
+    text-align: left;
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    border-radius: 0.5rem;
+  }
+
+  .reorder-hint {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--fg-muted);
+  }
+
+  .reorder-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .reorder-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.375rem 0.75rem;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 0.375rem;
+  }
+
+  .reorder-name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-size: 0.9375rem;
+  }
+
+  .reorder-controls {
+    flex: 0 0 auto;
+    display: inline-flex;
+    gap: 0.25rem;
+  }
+
+  .reorder-controls .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    font-size: 1rem;
+    line-height: 1;
+    color: var(--fg-muted);
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
+  }
+
+  .reorder-controls .icon-btn:hover:not(:disabled),
+  .reorder-controls .icon-btn:focus-visible:not(:disabled) {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .reorder-controls .icon-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .edit-actions .save:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
   .work-foot {
     display: flex;
     flex-direction: column;
@@ -481,7 +675,7 @@
     border: 1px solid var(--accent);
   }
 
-  .edit-actions .save:hover {
+  .edit-actions .save:hover:not(:disabled) {
     opacity: 0.85;
   }
 
@@ -786,7 +980,7 @@
     border: 1px solid var(--accent);
   }
 
-  .edit-actions .save:hover {
+  .edit-actions .save:hover:not(:disabled) {
     opacity: 0.85;
   }
 

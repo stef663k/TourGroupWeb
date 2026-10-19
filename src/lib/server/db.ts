@@ -52,6 +52,7 @@ export interface ArtistRow {
 	details: string | null;
 	image_key: string | null;
 	image_content_type: string | null;
+	sort_order: number;
 	created_at: number;
 }
 
@@ -279,71 +280,82 @@ export async function updateEvent(
 			}
 
 			/**
-			* Henter alle artists sorteret efter deres nyeste tilknyttede events dato
-			* (nyeste først). Artister uden tilknyttede events (eller hvor eventsene
-			* mangler en dato) ligger nederst. Ved lige datoer sorteres efter id, så
-			* rækkefølgen er stabil.
-			*/
+			 * Henter alle artists i den rækkefølge ejeren har sat på forsiden
+			 * (lavest sort_order først). Ved lige sort_order sorteres efter id, så
+			 * rækkefølgen er stabil.
+			 */
 			export async function listArtists(db: D1Database): Promise<ArtistRow[]> {
-			const result = await db
-			.prepare(
-			'SELECT artists.id, artists.name, artists.years, artists.details, artists.image_key, artists.image_content_type, artists.created_at, ' +
-				'(SELECT MAX(events.event_date) FROM events WHERE events.artist_id = artists.id) AS latest_event_date ' +
-				'FROM artists ' +
-				'ORDER BY (latest_event_date IS NULL), latest_event_date DESC, artists.id DESC'
-			)
-			.all<ArtistRow>();
-			return result.results;
+				const result = await db
+					.prepare(
+						'SELECT id, name, years, details, image_key, image_content_type, sort_order, created_at ' +
+							'FROM artists ORDER BY sort_order, id'
+					)
+					.all<ArtistRow>();
+				return result.results;
 			}
 
 			/**
-			* Slår en artist-række op på id. Returnerer null hvis den ikke findes.
-			*/
+			 * Slår en artist-række op på id. Returnerer null hvis den ikke findes.
+			 */
 			export async function getArtist(db: D1Database, id: number): Promise<ArtistRow | null> {
-			const row = await db
-			.prepare(
-				'SELECT id, name, years, details, image_key, image_content_type, created_at FROM artists WHERE id = ?1'
-			)
-			.bind(id)
-			.first<ArtistRow>();
-			return row ?? null;
+				const row = await db
+					.prepare(
+						'SELECT id, name, years, details, image_key, image_content_type, sort_order, created_at FROM artists WHERE id = ?1'
+					)
+					.bind(id)
+					.first<ArtistRow>();
+				return row ?? null;
 			}
 
 			/**
-			* Opdaterer en artist-række og returnerer den opdaterede række.
-			* Returnerer null hvis rækken ikke findes.
-			*/
+			 * Opdaterer en artist-række og returnerer den opdaterede række.
+			 * Returnerer null hvis rækken ikke findes.
+			 */
 			export async function updateArtist(
-			db: D1Database,
-			id: number,
-			input: { name: string; years?: string | null }
+				db: D1Database,
+				id: number,
+				input: { name: string; years?: string | null }
 			): Promise<ArtistRow | null> {
-			const result = await db
-			.prepare(
-			'UPDATE artists SET name = ?1, years = ?2 ' +
-				'WHERE id = ?3 RETURNING id, name, years, details, image_key, image_content_type, created_at'
-			)
-			.bind(input.name, input.years ?? null, id)
-			.first<ArtistRow>();
-			return result ?? null;
+				const result = await db
+					.prepare(
+						'UPDATE artists SET name = ?1, years = ?2 ' +
+							'WHERE id = ?3 RETURNING id, name, years, details, image_key, image_content_type, sort_order, created_at'
+					)
+					.bind(input.name, input.years ?? null, id)
+					.first<ArtistRow>();
+				return result ?? null;
 			}
 
 			/**
-			* Opretter en artist-række og returnerer den.
-			*/
+			 * Opretter en artist-række og returnerer den. Nye artister lægges nederst
+			 * i den manuelt sorterede liste.
+			 */
 			export async function createArtist(
-			db: D1Database,
-			input: { name: string; years?: string | null }
+				db: D1Database,
+				input: { name: string; years?: string | null }
 			): Promise<ArtistRow> {
-			const result = await db
-			.prepare(
-			'INSERT INTO artists (name, years) ' +
-				'VALUES (?1, ?2) RETURNING id, name, years, details, image_key, image_content_type, created_at'
-			)
-			.bind(input.name, input.years ?? null)
-			.first<ArtistRow>();
-			if (!result) throw new Error('Could not create artist.');
-			return result;
+				const result = await db
+					.prepare(
+						'INSERT INTO artists (name, years, sort_order) ' +
+							'VALUES (?1, ?2, (SELECT COALESCE(MAX(sort_order) + 1, 0) FROM artists)) ' +
+							'RETURNING id, name, years, details, image_key, image_content_type, sort_order, created_at'
+					)
+					.bind(input.name, input.years ?? null)
+					.first<ArtistRow>();
+				if (!result) throw new Error('Could not create artist.');
+				return result;
+			}
+
+			/**
+			 * Gemmer en ny rækkefølge for artisterne. `orderedIds` er alle artist-id'er
+			 * i den ønskede visningsrækkefølge; hver række får sort_order = sin placering.
+			 */
+			export async function reorderArtists(db: D1Database, orderedIds: number[]): Promise<void> {
+				if (orderedIds.length === 0) return;
+				const statements = orderedIds.map((id, index) =>
+					db.prepare('UPDATE artists SET sort_order = ?1 WHERE id = ?2').bind(index, id)
+				);
+				await db.batch(statements);
 			}
 
 /**
@@ -358,7 +370,7 @@ export async function updateArtistDetails(
 	const result = await db
 		.prepare(
 			'UPDATE artists SET details = ?1 ' +
-				'WHERE id = ?2 RETURNING id, name, years, details, image_key, image_content_type, created_at'
+				'WHERE id = ?2 RETURNING id, name, years, details, image_key, image_content_type, sort_order, created_at'
 		)
 		.bind(details, id)
 		.first<ArtistRow>();
@@ -377,7 +389,7 @@ export async function updateArtistImage(
 	const result = await db
 		.prepare(
 			'UPDATE artists SET image_key = ?1, image_content_type = ?2 ' +
-				'WHERE id = ?3 RETURNING id, name, years, details, image_key, image_content_type, created_at'
+				'WHERE id = ?3 RETURNING id, name, years, details, image_key, image_content_type, sort_order, created_at'
 		)
 		.bind(image?.r2Key ?? null, image?.contentType ?? null, id)
 		.first<ArtistRow>();

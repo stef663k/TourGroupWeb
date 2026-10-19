@@ -15,6 +15,7 @@ function createFakeD1() {
 		details: string | null;
 		image_key?: string | null;
 		image_content_type?: string | null;
+		sort_order?: number;
 		created_at: number;
 	}[] = [];
 	let nextLinkId = 1;
@@ -58,6 +59,37 @@ function createFakeD1() {
 	const prepare = (sql: string) => {
 		let args: unknown[] = [];
 		const normalized = () => sql.replace(/\s+/g, ' ').trim();
+		const runStatement = <T>() => {
+			const q = normalized();
+			if (q.startsWith('DELETE FROM artists WHERE id')) {
+				const [id] = args as [number];
+				const idx = rows.findIndex((r) => r.id === id);
+				if (idx >= 0) rows.splice(idx, 1);
+				for (let i = links.length - 1; i >= 0; i--) {
+					if (links[i].artist_id === id) links.splice(i, 1);
+				}
+				return { success: true } as D1Result<T>;
+			}
+			if (q.startsWith('UPDATE artists SET sort_order = ?1 WHERE id = ?2')) {
+				const [sortOrder, id] = args as [number, number];
+				const row = rows.find((r) => r.id === id);
+				if (row) row.sort_order = sortOrder;
+				return { success: true } as D1Result<T>;
+			}
+			if (q.startsWith('DELETE FROM artist_links WHERE id')) {
+				const [id] = args as [number];
+				const idx = links.findIndex((l) => l.id === id);
+				if (idx >= 0) links.splice(idx, 1);
+				return { success: true } as D1Result<T>;
+			}
+			if (q.startsWith('DELETE FROM companies WHERE id')) {
+				const [id] = args as [number];
+				const idx = companies.findIndex((c) => c.id === id);
+				if (idx >= 0) companies.splice(idx, 1);
+				return { success: true } as D1Result<T>;
+			}
+			throw new Error(`Unsupported SQL in run(): ${q}`);
+		};
 
 		const statement = {
 			bind(...values: unknown[]) {
@@ -68,6 +100,7 @@ function createFakeD1() {
 				const q = normalized();
 				if (q.startsWith('INSERT INTO artists')) {
 					const [name, years] = args as [string, string | null];
+					const nextSortOrder = rows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1) + 1;
 					const row = {
 						id: nextId++,
 						name,
@@ -75,6 +108,7 @@ function createFakeD1() {
 						details: null,
 						image_key: null,
 						image_content_type: null,
+						sort_order: nextSortOrder,
 						created_at: 0
 					};
 					rows.push(row);
@@ -103,7 +137,7 @@ function createFakeD1() {
 					row.years = years;
 					return row as T;
 				}
-				if (q.startsWith('SELECT id, name, years, details, image_key, image_content_type, created_at FROM artists WHERE id')) {
+				if (q.startsWith('SELECT id, name, years, details, image_key, image_content_type, sort_order, created_at FROM artists WHERE id')) {
 					const [id] = args as [number];
 					return (rows.find((r) => r.id === id) ?? null) as T | null;
 				}
@@ -145,27 +179,12 @@ function createFakeD1() {
 				const q = normalized();
 				if (
 					q.startsWith(
-						'SELECT artists.id, artists.name, artists.years, artists.details, artists.image_key, artists.image_content_type'
+						'SELECT id, name, years, details, image_key, image_content_type, sort_order, created_at FROM artists ORDER BY sort_order'
 					)
 				) {
-					const latestDateOf = (artistId: number) => {
-						let latest: string | null = null;
-						for (const e of events) {
-							if (e.artist_id === artistId && e.event_date !== null) {
-								if (latest === null || e.event_date > latest) latest = e.event_date;
-							}
-						}
-						return latest;
-					};
-					const sorted = [...rows].sort((a, b) => {
-						const aDate = latestDateOf(a.id);
-						const bDate = latestDateOf(b.id);
-						const aNull = aDate === null ? 1 : 0;
-						const bNull = bDate === null ? 1 : 0;
-						if (aNull !== bNull) return aNull - bNull;
-						if (aDate !== bDate) return (bDate ?? '').localeCompare(aDate ?? '');
-						return b.id - a.id;
-					});
+					const sorted = [...rows].sort(
+						(a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.id - b.id
+					);
 					return { results: sorted as T[], success: true };
 					}
 					if (
@@ -202,36 +221,23 @@ function createFakeD1() {
 				throw new Error(`Unsupported SQL in all(): ${q}`);
 			},
 			async run<T>() {
-				const q = normalized();
-				if (q.startsWith('DELETE FROM artists WHERE id')) {
-					const [id] = args as [number];
-					const idx = rows.findIndex((r) => r.id === id);
-					if (idx >= 0) rows.splice(idx, 1);
-					for (let i = links.length - 1; i >= 0; i--) {
-						if (links[i].artist_id === id) links.splice(i, 1);
-					}
-					return { success: true } as D1Result<T>;
-				}
-				if (q.startsWith('DELETE FROM artist_links WHERE id')) {
-					const [id] = args as [number];
-					const idx = links.findIndex((l) => l.id === id);
-					if (idx >= 0) links.splice(idx, 1);
-					return { success: true } as D1Result<T>;
-				}
-				if (q.startsWith('DELETE FROM companies WHERE id')) {
-					const [id] = args as [number];
-					const idx = companies.findIndex((c) => c.id === id);
-					if (idx >= 0) companies.splice(idx, 1);
-					return { success: true } as D1Result<T>;
-				}
-				throw new Error(`Unsupported SQL in run(): ${q}`);
-			}
-		};
-		return statement;
-	};
+				return runStatement<T>();
+			},
+			__exec: async () => runStatement()
+			};
+			return statement;
+			};
 
-	return {
-		prepare,
+			return {
+			prepare,
+		batch: async (statements: unknown[]) => {
+			const results: unknown[] = [];
+			for (const entry of statements) {
+				const exec = (entry as { __exec?: () => Promise<unknown> }).__exec;
+				results.push(exec ? await exec() : { success: true });
+			}
+			return results;
+		},
 		_rows: rows,
 		_links: links,
 		_events: events,
@@ -1277,5 +1283,106 @@ describe('updateArtist action', () => {
 			form.set('id', '1');
 			const res = await runRemoveArtistLink(form, makePlatform(undefined));
 			expect(res.status).toBe(500);
+		});
+		});
+
+		async function runReorderArtists(form: FormData, platform: unknown, owner = true): Promise<ActionResult> {
+			const action = actions.reorderArtists;
+			const result = await action({
+				request: new Request('http://localhost/?/reorderArtists', { method: 'POST', body: form }),
+				platform,
+				locals: { owner }
+			} as never);
+			return result as unknown as ActionResult;
+		}
+
+		async function seedArtists(db: ReturnType<typeof createFakeD1>, names: string[]) {
+			for (const name of names) {
+				const create = new FormData();
+				create.set('name', name);
+				await runCreateArtist(create, makePlatform(db));
+			}
+			return db._rows.map((r) => r.id);
+		}
+
+		describe('reorderArtists action', () => {
+		let errorSpy: ReturnType<typeof vi.spyOn>;
+
+		beforeEach(() => {
+			errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		});
+
+		afterEach(() => {
+			errorSpy.mockRestore();
+		});
+
+		it('afviser en ikke-owner', async () => {
+			const form = new FormData();
+			form.set('order', '1,2');
+			const res = await runReorderArtists(form, makePlatform(createFakeD1()), false);
+			expect(res.status).toBe(403);
+		});
+
+		it('fejler når databasen ikke er konfigureret', async () => {
+			const form = new FormData();
+			form.set('order', '1,2');
+			const res = await runReorderArtists(form, makePlatform(undefined));
+			expect(res.status).toBe(500);
+		});
+
+		it('afviser en tom rækkefølge', async () => {
+			const form = new FormData();
+			form.set('order', '   ');
+			const res = await runReorderArtists(form, makePlatform(createFakeD1()));
+			expect(res.status).toBe(400);
+		});
+
+		it('afviser et ugyldigt id', async () => {
+			const db = createFakeD1();
+			await seedArtists(db, ['A', 'B']);
+			const form = new FormData();
+			form.set('order', '1,abc');
+			const res = await runReorderArtists(form, makePlatform(db));
+			expect(res.status).toBe(400);
+		});
+
+		it('afviser dubletter i rækkefølgen', async () => {
+			const db = createFakeD1();
+			await seedArtists(db, ['A', 'B']);
+			const form = new FormData();
+			form.set('order', '1,1');
+			const res = await runReorderArtists(form, makePlatform(db));
+			expect(res.status).toBe(400);
+		});
+
+		it('afviser ukendte id’er', async () => {
+			const db = createFakeD1();
+			const ids = await seedArtists(db, ['A', 'B']);
+			const form = new FormData();
+			form.set('order', `${ids[0]},999`);
+			const res = await runReorderArtists(form, makePlatform(db));
+			expect(res.status).toBe(400);
+		});
+
+		it('afviser en rækkefølge der ikke rummer alle artister', async () => {
+			const db = createFakeD1();
+			const ids = await seedArtists(db, ['A', 'B', 'C']);
+			const form = new FormData();
+			form.set('order', `${ids[0]},${ids[1]}`);
+			const res = await runReorderArtists(form, makePlatform(db));
+			expect(res.status).toBe(400);
+		});
+
+		it('gemmer en ny rækkefølge', async () => {
+			const db = createFakeD1();
+			const [a, b, c] = await seedArtists(db, ['A', 'B', 'C']);
+
+			const form = new FormData();
+			form.set('order', `${c},${a},${b}`);
+			const res = await runReorderArtists(form, makePlatform(db));
+			expect(res.success).toBe(true);
+
+			const data = await runLoad(makePlatform(db));
+			expect(data.artists.map((artist) => artist.name)).toEqual(['C', 'A', 'B']);
 		});
 		});

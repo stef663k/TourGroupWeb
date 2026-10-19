@@ -14,6 +14,7 @@ import {
 	getArtistLink,
 	addArtistLink,
 	removeArtistLink,
+	reorderArtists,
 	listCompanies,
 	getCompany,
 	createCompany,
@@ -392,6 +393,54 @@ export const load: PageServerLoad = async ({ platform }) => {
 		} catch (err) {
 			console.error('Kunne ikke slette artist-link:', err);
 			return fail(500, { error: 'Could not delete. Please try again later.' });
+		}
+
+		return { success: true };
+		},
+
+	reorderArtists: async ({ request, platform, locals }) => {
+		if (!locals.owner) return fail(403, { error: 'Not authorized.' });
+
+		const db = platform?.env?.DB;
+		if (!db) return fail(500, { error: 'The database is not configured.' });
+
+		const data = await request.formData();
+		// Rækkefølgen sendes som en kommasepareret liste af artist-id'er.
+		const raw = String(data.get('order') ?? '').trim();
+		const ids = raw
+			.split(',')
+			.map((part) => part.trim())
+			.filter((part) => part !== '')
+			.map(Number);
+
+		if (ids.length === 0) return fail(400, { error: 'The order is empty.' });
+		if (!ids.every((id) => Number.isInteger(id) && id > 0)) {
+			return fail(400, { error: 'Invalid entry.' });
+		}
+		if (new Set(ids).size !== ids.length) {
+			return fail(400, { error: 'Each artist may only appear once.' });
+		}
+
+		let artists: Awaited<ReturnType<typeof listArtists>>;
+		try {
+			artists = await listArtists(db);
+		} catch (err) {
+			console.error('Kunne ikke hente artists:', err);
+			return fail(500, { error: 'Could not save. Please try again later.' });
+		}
+
+		// Kun kendte id'er må opdateres, og listen skal rumme alle artister, så
+		// vi ikke kan ende med dubletter eller efterladte rækker i rækkefølgen.
+		const knownIds = new Set(artists.map((artist) => artist.id));
+		if (ids.length !== knownIds.size || !ids.every((id) => knownIds.has(id))) {
+			return fail(400, { error: 'The order is out of date. Reload the page and try again.' });
+		}
+
+		try {
+			await reorderArtists(db, ids);
+		} catch (err) {
+			console.error('Kunne ikke gemme artist-rækkefølge:', err);
+			return fail(500, { error: 'Could not save. Please try again later.' });
 		}
 
 		return { success: true };
