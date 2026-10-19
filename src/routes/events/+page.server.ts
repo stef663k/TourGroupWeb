@@ -23,7 +23,7 @@ import {
 } from '$lib/server/storage';
 
 /** R2-nøgle for baggrundsbilledet på events-siden. */
-const EVENTS_BACKGROUND_KEY = 'Lukas/EventBackghround.jpg';
+const EVENTS_BACKGROUND_KEY = 'Lukas/EventBackground.jpg';
 
 export const load: PageServerLoad = async ({ platform }) => {
 	const db = platform?.env?.DB;
