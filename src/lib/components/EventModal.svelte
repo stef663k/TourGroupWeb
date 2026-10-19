@@ -542,8 +542,8 @@
   .images {
     list-style: none;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
-    gap: 0.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+    gap: 0.75rem;
   }
 
   .images li {
