@@ -65,8 +65,8 @@
 
 <style>
 	/* Logoet ligger absolut ovenpå nav-linjen og fylder hele dens højde
-	   (top: 0 / bottom: 0). Det betyder at logoets størrelse ikke påvirker
-	   nav'ens højde – kun hvor stort logoet tegnes. */
+	   (top: 0 / bottom: 0). Nav-linjens højde kommer fra --nav-height i
+	   app.css, som er beregnet ud fra logoets bredde. */
 	.brand {
 		position: absolute;
 		top: 0;
@@ -81,18 +81,19 @@
 	}
 
 	/* Logoen skaleres efter den plads der er tilbage når menuen er trukket
-	   fra, så de to aldrig overlapper. Fri bredde = 100% − menubredde
-	   (− lidt luft og nav'ens lodrette/horisontale padding).
-	   Faktor og minimum skal holdes i sync med --menu-width i app.css. */
+	   fra, så de to aldrig overlapper. Bredden kommer fra
+	   --brand-logo-width i app.css, som nav-højden også læser – derfor
+	   følger nav-linjen altid logoets størrelse. */
 	.brand-logo {
 		display: block;
 		width: min(
 			calc(100vw - var(--menu-width) - 6rem),
-			var(--brand-logo-max)
+			var(--brand-logo-width)
 		);
-		/* Højden må aldrig overstige nav-højden, så logoet ikke gør baren højere. */
 		max-width: 100%;
-		max-height: 100%;
+		/* Højden følger logoets bredde (931×150), så billedet ikke forskydes. */
+		aspect-ratio: 931 / 150;
+		height: auto;
 		object-fit: contain;
 		object-position: left center;
 		pointer-events: auto;

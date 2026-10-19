@@ -31,11 +31,17 @@
   --max-width:     1200px;
   --content-width: 44rem;
 
-  /* Navigation: menubredden og logoets maks. bredde. Bruges af logoet i
-     layoutet til at undgå overlap. Skal holdes i sync med
-     .brand-logo / .brand i src/routes/+layout.svelte. */
-  --menu-width:     min(52vw, 31rem);
-  --brand-logo-max: 14rem;
+  /* Navigation: logoets bredde og den nav-højde der følger af den.
+     Logoet er 931×150 (≈6,207:1), så højden = bredde × 150/931.
+     Ændres bredden her, følger nav-linjen automatisk med.
+     --menu-width = menubredde, bruges til at undgå overlap med logoet.
+     Skal holdes i sync med .brand-logo i src/routes/+layout.svelte. */
+  --brand-logo-width:  clamp(7rem, 26vw, 14rem);
+  --brand-logo-height: calc(var(--brand-logo-width) * 150 / 931);
+  --menu-width:       min(52vw, 31rem);
+  --nav-padding-block: 0.75rem;
+  /* Nav-højde = logo-højde + lodret padding (top + bund). */
+  --nav-height:       calc(var(--brand-logo-height) + 2 * var(--nav-padding-block));
 
   /* Overgange */
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
@@ -100,8 +106,9 @@ p {
 }
 
 /* --- Navigation ----------------------------- */
-/* Højden styres udelukkende af menulinjen. Logoet er lagt absolut ovenpå
-   (se .brand i layoutet), så det kan være stort uden at påvirke nav'ens højde. */
+/* Højden styres af logoets størrelse (--brand-logo-width → --brand-logo-height),
+   så nav-linjen altid følger logoet. Logoet selv er lagt absolut ovenpå
+   (se .brand i layoutet). */
 nav {
   position: relative;
   display: flex;
@@ -111,7 +118,8 @@ nav {
   width: 100%;
   max-width: var(--max-width);
   margin: 0 auto;
-  padding: 0.75rem var(--space-gutter);
+  padding: var(--nav-padding-block) var(--space-gutter);
+  min-height: var(--nav-height);
   border-bottom: 1px solid var(--line);
   }
 
