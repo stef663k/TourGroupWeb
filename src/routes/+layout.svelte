@@ -64,35 +64,16 @@
 <CookieConsent />
 
 <style>
-	/* Logoet ligger absolut ovenpå nav-linjen og fylder hele dens højde
-	   (top: 0 / bottom: 0). Nav-linjens højde kommer fra --nav-height i
-	   app.css, som er beregnet ud fra logoets bredde. */
 	.brand {
-		position: absolute;
-		top: 0;
-		bottom: 0;
-		left: var(--space-gutter);
-		z-index: 1;
-		display: flex;
+		display: inline-flex;
 		align-items: center;
-		/* Logoen må ikke stjæle klik fra menupunkterne. Kun selve logoet
-		   er klikbart (pointer-events: auto nedenfor). */
-		pointer-events: none;
 	}
 
-	/* Bredden kommer udelukkende fra --brand-logo-width i app.css, som
-	   nav-højden også læser – derfor følger nav-linjen logoets størrelse.
-	   Bemærk: ingen max-width her. .brand er absolut positioneret uden
-	   width/right, så en max-width i procent ville blive målt mod den
-	   shrink-to-fit-boks og overskrive bredden nedenfor. */
 	.brand-logo {
 		display: block;
-		width: var(--brand-logo-width);
-		/* Højden følger logoets bredde (931×150), så billedet ikke forskydes. */
+		height: clamp(2rem, 4vw, 2.75rem);
+		width: auto;
 		aspect-ratio: 931 / 150;
-		height: auto;
 		object-fit: contain;
-		object-position: left center;
-		pointer-events: auto;
 	}
 </style>
