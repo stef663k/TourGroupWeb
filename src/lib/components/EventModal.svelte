@@ -542,7 +542,7 @@
   .images {
     list-style: none;
     display: grid;
-    grid-template-columns: repeat(auto-fill, 10rem);
+    grid-template-columns: repeat(auto-fill, 18rem);
     gap: 0.75rem;
   }
 
@@ -552,8 +552,8 @@
 
   .images img {
     width: 100%;
-    aspect-ratio: 1;
-    object-fit: cover;
+    height: auto;
+    object-fit: contain;
     border-radius: 0.375rem;
     border: 1px solid var(--line);
   }
