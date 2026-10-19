@@ -41,8 +41,8 @@
   // svelte-ignore state_referenced_locally
   let link = $state(event.link ?? '');
 
-  // Modalen viser kun de efterfølgende billeder. Cover-billedet (uploadet da
-  // eventet blev oprettet) vises på eventkortet i stedet.
+  // Modalen viser de uploadede billeder (alt undtagen cover-billedet, som
+  // vises på eventkortet). Det gælder for alle — også ikke-ownere.
   let photos = $derived(event.images.filter((image) => !image.isCover));
 
   // Re-sync the editable fields only when the parent passes a genuinely new
