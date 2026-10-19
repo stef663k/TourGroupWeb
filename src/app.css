@@ -31,6 +31,12 @@
   --max-width:     1200px;
   --content-width: 44rem;
 
+  /* Navigation: menubredden og logoets maks. bredde. Bruges af logoet i
+     layoutet til at undgå overlap. Skal holdes i sync med
+     .brand-logo / .brand i src/routes/+layout.svelte. */
+  --menu-width:     min(52vw, 31rem);
+  --brand-logo-max: 14rem;
+
   /* Overgange */
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -94,18 +100,18 @@ p {
 }
 
 /* --- Navigation ----------------------------- */
-/* Højden styres af indholdet (logoet). Lodret padding holdes bevidst
-   lille, så nav'en ikke bliver høj, bare fordi logoet er stort. */
+/* Højden styres udelukkende af menulinjen. Logoet er lagt absolut ovenpå
+   (se .brand i layoutet), så det kan være stort uden at påvirke nav'ens højde. */
 nav {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 0.5rem 1.5rem;
   width: 100%;
   max-width: var(--max-width);
   margin: 0 auto;
-  padding: 0.5rem var(--space-gutter);
+  padding: 0.75rem var(--space-gutter);
   border-bottom: 1px solid var(--line);
   }
 
@@ -152,10 +158,11 @@ nav > a {
   border-bottom: none;
 }
 
-nav ul {
+nav > ul {
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
-  /* Ingen wrap: menuen må aldrig tvinge nav'en til at blive højere end logoet. */
   flex-wrap: nowrap;
   gap: clamp(1rem, 3vw, 1.75rem);
   list-style: none;
@@ -324,9 +331,11 @@ footer {
 @media (max-width: 640px) {
   nav .burger {
     display: flex;
+    position: relative;
+    z-index: 3;
   }
 
-  nav ul {
+  nav > ul {
     position: absolute;
     top: 100%;
     left: 0;
@@ -345,7 +354,7 @@ footer {
     transition: max-height 0.25s var(--ease), visibility 0.25s var(--ease);
   }
 
-  nav ul.open {
+  nav > ul.open {
     max-height: 24rem;
     visibility: visible;
   }

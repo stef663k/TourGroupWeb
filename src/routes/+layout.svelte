@@ -64,18 +64,37 @@
 <CookieConsent />
 
 <style>
-	/* Logoet må ikke krympe, og det må ikke skubbe
-	   menu-linksene ud af pladsen på store skærme. */
+	/* Logoet ligger absolut ovenpå nav-linjen og fylder hele dens højde
+	   (top: 0 / bottom: 0). Det betyder at logoets størrelse ikke påvirker
+	   nav'ens højde – kun hvor stort logoet tegnes. */
 	.brand {
-		display: inline-flex;
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: var(--space-gutter);
+		z-index: 1;
+		display: flex;
 		align-items: center;
-		flex: 0 0 auto;
+		/* Logoen må ikke stjæle klik fra menupunkterne. Kun selve logoet
+		   er klikbart (pointer-events: auto nedenfor). */
+		pointer-events: none;
 	}
 
+	/* Logoen skaleres efter den plads der er tilbage når menuen er trukket
+	   fra, så de to aldrig overlapper. Fri bredde = 100% − menubredde
+	   (− lidt luft og nav'ens lodrette/horisontale padding).
+	   Faktor og minimum skal holdes i sync med --menu-width i app.css. */
 	.brand-logo {
 		display: block;
-		height: auto;
-		width: clamp(7rem, 26vw, 14rem);
+		width: min(
+			calc(100vw - var(--menu-width) - 6rem),
+			var(--brand-logo-max)
+		);
+		/* Højden må aldrig overstige nav-højden, så logoet ikke gør baren højere. */
 		max-width: 100%;
+		max-height: 100%;
+		object-fit: contain;
+		object-position: left center;
+		pointer-events: auto;
 	}
 </style>
