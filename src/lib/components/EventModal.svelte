@@ -101,12 +101,25 @@
     imageNote = null;
   }
 
+  // Sørg for at selve <input>-feltet altid indeholder præcis de valgte
+  // (komprimerede) filer. SvelteKit's `use:enhance` læser filerne fra
+  // input-feltet i det øjeblik formularen indsendes, så vi kan IKKE bytte
+  // filerne i submit-callbacken (den kører for sent). Derfor synkroniserer vi
+  // input-feltet hver gang listen ændres.
+  function syncInputFiles() {
+    if (!fileInput) return;
+    const dt = new DataTransfer();
+    for (const item of items) dt.items.add(item.compressed);
+    fileInput.files = dt.files;
+  }
+
   // Fjern en enkelt valgt fil før den gemmes (fx hvis brugeren kom til at
   // vælge det forkerte billede). Frigør dens preview-URL og opdatér noten.
   function removeItem(previewUrl: string) {
     URL.revokeObjectURL(previewUrl);
     items = items.filter((item) => item.previewUrl !== previewUrl);
     if (items.length === 0) imageNote = null;
+    syncInputFiles();
   }
 
   function formatSize(bytes: number): string {
@@ -146,10 +159,13 @@
             ? `Compressed ${files.length} images (saved ${formatSize(savedBytes)}).`
             : `Compressed, saving ${formatSize(savedBytes)}.`;
       }
-    } finally {
+      } finally {
       compressing = false;
-    }
-  }
+      }
+      // Sæt de komprimerede filer tilbage i input-feltet, så de er det der
+      // indsendes (i stedet for originalerne).
+      syncInputFiles();
+      }
 
   function onSubmitImage() {
     return async ({
@@ -157,13 +173,6 @@
     }: {
       update: (opts?: { reset?: boolean }) => Promise<void>;
     }) => {
-      if (fileInput && items.length > 0) {
-        // Overskriv fil-feltet med de komprimerede billeder, så serveren får
-        // de komprimerede filer i stedet for originalerne.
-        const dt = new DataTransfer();
-        for (const item of items) dt.items.add(item.compressed);
-        fileInput.files = dt.files;
-      }
       await update({ reset: true });
       if (fileInput) fileInput.value = '';
       clearSelection();
