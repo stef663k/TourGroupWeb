@@ -541,18 +541,22 @@
 
   .images {
     list-style: none;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, 18rem);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
     gap: 0.75rem;
   }
 
   .images li {
     position: relative;
+    flex: 0 0 auto;
   }
 
   .images img {
-    width: 100%;
-    height: auto;
+    height: 18rem;
+    width: auto;
+    max-width: 100%;
+    display: block;
     object-fit: contain;
     border-radius: 0.375rem;
     border: 1px solid var(--line);
