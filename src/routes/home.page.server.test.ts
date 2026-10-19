@@ -13,6 +13,8 @@ function createFakeD1() {
 		name: string;
 		years: string | null;
 		details: string | null;
+		image_key: string | null;
+		image_content_type: string | null;
 		created_at: number;
 	}[] = [];
 	let nextLinkId = 1;
@@ -66,8 +68,24 @@ function createFakeD1() {
 				const q = normalized();
 				if (q.startsWith('INSERT INTO artists')) {
 					const [name, years] = args as [string, string | null];
-					const row = { id: nextId++, name, years, details: null, created_at: 0 };
+					const row = {
+						id: nextId++,
+						name,
+						years,
+						details: null,
+						image_key: null,
+						image_content_type: null,
+						created_at: 0
+					};
 					rows.push(row);
+					return row as T;
+				}
+				if (q.startsWith('UPDATE artists SET image_key = ?1, image_content_type = ?2')) {
+					const [imageKey, imageContentType, id] = args as [string | null, string | null, number];
+					const row = rows.find((r) => r.id === id);
+					if (!row) return null;
+					row.image_key = imageKey;
+					row.image_content_type = imageContentType;
 					return row as T;
 				}
 				if (q.startsWith('UPDATE artists SET details')) {
@@ -85,7 +103,7 @@ function createFakeD1() {
 					row.years = years;
 					return row as T;
 				}
-				if (q.startsWith('SELECT id, name, years, details, created_at FROM artists WHERE id')) {
+				if (q.startsWith('SELECT id, name, years, details, image_key, image_content_type, created_at FROM artists WHERE id')) {
 					const [id] = args as [number];
 					return (rows.find((r) => r.id === id) ?? null) as T | null;
 				}
@@ -127,7 +145,7 @@ function createFakeD1() {
 				const q = normalized();
 				if (
 					q.startsWith(
-						'SELECT artists.id, artists.name, artists.years, artists.details, artists.created_at'
+						'SELECT artists.id, artists.name, artists.years, artists.details, artists.image_key, artists.image_content_type'
 					)
 				) {
 					const latestDateOf = (artistId: number) => {

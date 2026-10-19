@@ -33,6 +33,7 @@
     name: string;
     years: string | null;
     details: string | null;
+    imageUrl?: string | null;
     links: ArtistLink[];
     events?: ArtistEvent[];
   }
@@ -104,7 +105,12 @@
 >
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="artist-modal-title">
     <div class="modal-head">
-      <h2 id="artist-modal-title">{artist.name}</h2>
+      <div class="modal-title-group">
+        {#if artist.imageUrl}
+          <img class="modal-thumb" src={artist.imageUrl} alt={artist.name} />
+        {/if}
+        <h2 id="artist-modal-title">{artist.name}</h2>
+      </div>
       <button type="button" class="close" aria-label="Close" onclick={close}>×</button>
     </div>
 
@@ -234,6 +240,22 @@
     gap: 1rem;
     padding: clamp(1rem, 3vw, 1.5rem);
     border-bottom: 1px solid var(--line);
+  }
+
+  .modal-title-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+
+  .modal-thumb {
+    flex: 0 0 auto;
+    width: 2.75rem;
+    height: 2.75rem;
+    object-fit: cover;
+    border: 1px solid var(--line);
+    border-radius: 0.375rem;
   }
 
   .modal-head h2 {

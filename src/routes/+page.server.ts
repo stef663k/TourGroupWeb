@@ -8,6 +8,7 @@ import {
 	getArtist,
 	updateArtist,
 	updateArtistDetails,
+	updateArtistImage,
 	deleteArtist,
 	listArtistLinks,
 	getArtistLink,
@@ -19,7 +20,13 @@ import {
 	updateCompany,
 	deleteCompany
 } from '$lib/server/db';
-import { publicImageUrl } from '$lib/server/storage';
+import {
+	buildArtistImageKey,
+	publicImageUrl,
+	validateImage,
+	MAX_IMAGE_BYTES,
+	slugify
+} from '$lib/server/storage';
 
 /**
  * Validerer et virksomheds-link. Tomme links er tilladt (feltet er valgfrit).
@@ -42,6 +49,15 @@ function validateLink(link: string): string | null {
 
 const LOGO_KEY = 'logo/logoudentegn.png';
 const HERO_BACKGROUND_KEY = 'Lukas/HomeBackground.jpg';
+
+/**
+ * Læser højst de bytes vi skal bruge til magic-byte-sniffing af en uploadet
+ * billedfil. Vi læser kun header-delen, ikke hele filen.
+ */
+async function readImageHead(file: Blob, length = 16): Promise<Uint8Array> {
+	const buffer = await file.slice(0, length).arrayBuffer();
+	return new Uint8Array(buffer);
+}
 
 export const load: PageServerLoad = async ({ platform }) => {
 	const db = platform?.env?.DB;
@@ -124,6 +140,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 			return {
 				...artist,
 				latestEventId: latestEventIdByArtist.get(artist.id) ?? null,
+				imageUrl: artist.image_key ? publicImageUrl(artist.image_key, baseUrl) : null,
 				links: links.map((link) => ({ id: link.id, label: link.label, url: link.url })),
 				events: artistEvents
 			};
@@ -150,16 +167,57 @@ export const load: PageServerLoad = async ({ platform }) => {
 		const data = await request.formData();
 		const name = String(data.get('name') ?? '').trim();
 		const years = String(data.get('years') ?? '').trim();
+		const file = data.get('file');
 
 		if (!name) return fail(400, { error: 'Name is required.' });
 		if (name.length > 200) return fail(400, { error: 'The name is too long.' });
 		if (years.length > 50) return fail(400, { error: 'The year is too long.' });
 
+		// Valgfrit profilbillede. Er der valgt en fil, valideres den her, så
+		// vi ikke opretter artisten og derefter fejler på et ugyldigt billede.
+		const imageFile = file instanceof File && file.size > 0 ? file : null;
+		let imageValidation: { contentType: string } | null = null;
+		if (imageFile) {
+			if (imageFile.size > MAX_IMAGE_BYTES) {
+				return fail(400, { error: 'The file is too large (max 8 MB).' });
+			}
+			const head = await readImageHead(imageFile);
+			const validation = validateImage({
+				contentType: imageFile.type,
+				size: imageFile.size,
+				head
+			});
+			if (!validation.ok) return fail(400, { error: validation.error });
+			imageValidation = { contentType: validation.contentType };
+		}
+
+		let created: Awaited<ReturnType<typeof createArtist>>;
 		try {
-			await createArtist(db, { name, years: years || null });
+			created = await createArtist(db, { name, years: years || null });
 		} catch (err) {
 			console.error('Kunne ikke oprette artist:', err);
 			return fail(500, { error: 'Could not save. Please try again later.' });
+		}
+
+		if (imageFile && imageValidation) {
+			const bucket = platform?.env?.Bucket;
+			if (!bucket) return fail(500, { error: 'Storage is not configured.' });
+			const slug = slugify(name) || `artist-${created.id}`;
+			const key = buildArtistImageKey(slug, imageValidation.contentType, crypto.randomUUID());
+			try {
+				await bucket.put(key, await imageFile.arrayBuffer(), {
+					httpMetadata: { contentType: imageValidation.contentType }
+				});
+				await updateArtistImage(db, created.id, {
+					r2Key: key,
+					contentType: imageValidation.contentType
+				});
+			} catch (err) {
+				console.error('Kunne ikke uploade artist-billede:', err);
+				return fail(500, {
+					error: 'The artist was created, but the image could not be uploaded.'
+				});
+			}
 		}
 
 		return { success: true };
@@ -177,6 +235,8 @@ export const load: PageServerLoad = async ({ platform }) => {
 
 		const name = String(data.get('name') ?? '').trim();
 		const years = String(data.get('years') ?? '').trim();
+		const removeImage = String(data.get('removeImage') ?? '') === '1';
+		const file = data.get('file');
 
 		if (!name) return fail(400, { error: 'Name is required.' });
 		if (name.length > 200) return fail(400, { error: 'The name is too long.' });
@@ -185,6 +245,24 @@ export const load: PageServerLoad = async ({ platform }) => {
 		const existing = await getArtist(db, id);
 		if (!existing) return fail(404, { error: 'The entry does not exist.' });
 
+		// Valgfrit nyt profilbillede. Er der valgt en fil, valideres den før
+		// vi gemmer noget, så et ugyldigt billede ikke efterlader ændringer.
+		const newImageFile = file instanceof File && file.size > 0 ? file : null;
+		let imageValidation: { contentType: string } | null = null;
+		if (newImageFile) {
+			if (newImageFile.size > MAX_IMAGE_BYTES) {
+				return fail(400, { error: 'The file is too large (max 8 MB).' });
+			}
+			const head = await readImageHead(newImageFile);
+			const validation = validateImage({
+				contentType: newImageFile.type,
+				size: newImageFile.size,
+				head
+			});
+			if (!validation.ok) return fail(400, { error: validation.error });
+			imageValidation = { contentType: validation.contentType };
+		}
+
 		try {
 			await updateArtist(db, id, { name, years: years || null });
 		} catch (err) {
@@ -192,8 +270,50 @@ export const load: PageServerLoad = async ({ platform }) => {
 			return fail(500, { error: 'Could not save. Please try again later.' });
 		}
 
+		// Håndter billede: upload nyt (og slet det gamle), eller fjern billedet.
+		if (newImageFile && imageValidation) {
+			const bucket = platform?.env?.Bucket;
+			if (!bucket) return fail(500, { error: 'Storage is not configured.' });
+			const slug = slugify(name) || `artist-${id}`;
+			const key = buildArtistImageKey(slug, imageValidation.contentType, crypto.randomUUID());
+			try {
+				await bucket.put(key, await newImageFile.arrayBuffer(), {
+					httpMetadata: { contentType: imageValidation.contentType }
+				});
+				await updateArtistImage(db, id, {
+					r2Key: key,
+					contentType: imageValidation.contentType
+				});
+			} catch (err) {
+				console.error('Kunne ikke uploade artist-billede:', err);
+				return fail(500, { error: 'Could not upload the image. Please try again later.' });
+			}
+			if (existing.image_key && existing.image_key !== key) {
+				try {
+					await bucket.delete(existing.image_key);
+				} catch (err) {
+					console.error(`Kunne ikke slette gammelt artist-billede ${existing.image_key}:`, err);
+				}
+			}
+		} else if (removeImage && existing.image_key) {
+			try {
+				await updateArtistImage(db, id, null);
+			} catch (err) {
+				console.error('Kunne ikke fjerne artist-billede:', err);
+				return fail(500, { error: 'Could not remove the image. Please try again later.' });
+			}
+			const bucket = platform?.env?.Bucket;
+			if (bucket && existing.image_key) {
+				try {
+					await bucket.delete(existing.image_key);
+				} catch (err) {
+					console.error(`Kunne ikke slette artist-billede ${existing.image_key}:`, err);
+				}
+			}
+		}
+
 		return { success: true };
-	},
+		},
 
 	updateArtistDetails: async ({ request, platform, locals }) => {
 		if (!locals.owner) return fail(403, { error: 'Not authorized.' });
@@ -287,6 +407,9 @@ export const load: PageServerLoad = async ({ platform }) => {
 		const id = Number(String(data.get('id') ?? '').trim());
 		if (!Number.isInteger(id)) return fail(400, { error: 'Invalid entry.' });
 
+		const existing = await getArtist(db, id);
+		if (!existing) return fail(404, { error: 'The entry does not exist.' });
+
 		try {
 			await deleteArtist(db, id);
 		} catch (err) {
@@ -294,8 +417,20 @@ export const load: PageServerLoad = async ({ platform }) => {
 			return fail(500, { error: 'Could not delete. Please try again later.' });
 		}
 
+		// Slet profilbilledet i R2, så vi ikke efterlader forældreløse filer.
+		if (existing.image_key) {
+			const bucket = platform?.env?.Bucket;
+			if (bucket) {
+				try {
+					await bucket.delete(existing.image_key);
+				} catch (err) {
+					console.error(`Kunne ikke slette artist-billede ${existing.image_key}:`, err);
+				}
+			}
+		}
+
 		return { success: true };
-	},
+		},
 
 	createCompany: async ({ request, platform, locals }) => {
 		if (!locals.owner) return fail(403, { error: 'Not authorized.' });

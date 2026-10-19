@@ -114,6 +114,19 @@ export function imageExtension(contentType: string): string | null {
  }
 
 /**
+ * Bygger R2-nøglen for en artists profilbillede. Ligger i `artist/<slug>/`
+ * så det er adskilt fra event-billederne i bucketen.
+ */
+export function buildArtistImageKey(
+	slug: string,
+	contentType: string,
+	uuid: string
+): string {
+	const ext = imageExtension(contentType) ?? 'bin';
+	return `Artist/${slug}/${uuid}.${ext}`;
+}
+
+/**
  * Udleder en offentlig URL for en R2-nøgle. Bruger `baseUrl` hvis sat
  * (fx et R2 custom domain), ellers serveres objektet via /images-ruten.
  */

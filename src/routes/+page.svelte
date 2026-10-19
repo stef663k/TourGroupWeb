@@ -63,6 +63,13 @@
           aria-haspopup="dialog"
           onclick={() => (modalArtist = work)}
         >
+          <span class="work-thumb" aria-hidden="true">
+            {#if work.imageUrl}
+              <img src={work.imageUrl} alt="" loading="lazy" />
+            {:else}
+              <span class="work-thumb-placeholder">{work.name.slice(0, 1)}</span>
+            {/if}
+          </span>
           <span class="work-name">{work.name}</span>
           {#if work.years}
             <span class="work-years">{work.years}</span>
@@ -115,7 +122,7 @@
       {/if}
       {#if data.owner && editingId === work.id}
         <li class="edit-row">
-          <form method="POST" action="?/updateArtist" use:enhance={() => async ({ update }) => { await update(); editingId = null; }} class="edit-form">
+          <form method="POST" action="?/updateArtist" enctype="multipart/form-data" use:enhance={() => async ({ update }) => { await update(); editingId = null; }} class="edit-form">
             <input type="hidden" name="id" value={work.id} />
             <label for="edit-name-{work.id}">Name</label>
             <input
@@ -135,6 +142,24 @@
               maxlength="50"
               placeholder="22-24"
             />
+
+            <label for="edit-photo-{work.id}">Picture {work.imageUrl ? '(replaces the current one)' : '(optional)'}</label>
+            {#if work.imageUrl}
+              <div class="edit-image-current">
+                <img src={work.imageUrl} alt="Current picture for {work.name}" />
+                <label class="remove-image-label">
+                  <input type="checkbox" name="removeImage" value="1" />
+                  Delete current picture
+                </label>
+              </div>
+            {/if}
+            <input
+              id="edit-photo-{work.id}"
+              name="file"
+              type="file"
+              accept="image/*"
+            />
+
             <div class="edit-actions">
               <button type="button" class="cancel" onclick={() => (editingId = null)}>Cancel</button>
               <button type="submit" class="save">Save</button>
@@ -152,9 +177,11 @@
     <div class="label">Create artist</div>
     <EventForm
       action="?/createArtist"
-      fields={['name', 'years']}
+      fields={['name', 'years', 'file']}
       submitLabel="Add"
       pendingLabel="Adding…"
+      requireImage={false}
+      imageLabel="Picture (optional)"
       error={form?.error}
     />
   </section>
@@ -471,8 +498,8 @@
 
   .work-link {
     display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: baseline;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
     gap: 0.75rem;
     width: 100%;
     padding: clamp(1rem, 3vw, 1.5rem) clamp(0.5rem, 2vw, 1rem);
@@ -485,13 +512,39 @@
     transition: color 0.2s var(--ease);
   }
 
+  .work-thumb {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    overflow: hidden;
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    border-radius: 0.375rem;
+  }
+
+  .work-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .work-thumb-placeholder {
+    font-size: 1.125rem;
+    font-weight: 500;
+    color: var(--fg-muted);
+    text-transform: uppercase;
+  }
+
   .work-link:hover,
   .work-link:focus-visible {
     color: var(--accent);
   }
 
   .work-name {
-    text-align: left;
+    text-align: center;
     font-size: clamp(1rem, 2.5vw, 1.25rem);
     letter-spacing: 0.02em;
   }
@@ -669,6 +722,33 @@
   .edit-form input:focus {
     outline: none;
     border-color: var(--accent);
+  }
+
+  .edit-image-current {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .edit-image-current img {
+    width: 4rem;
+    height: 4rem;
+    object-fit: cover;
+    border: 1px solid var(--line);
+    border-radius: 0.375rem;
+  }
+
+  .remove-image-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.8125rem;
+    color: var(--fg-muted);
+    cursor: pointer;
+  }
+
+  .remove-image-label input {
+    width: auto;
   }
 
   .form-error {

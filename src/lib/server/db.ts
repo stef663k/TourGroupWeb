@@ -50,6 +50,8 @@ export interface ArtistRow {
 	name: string;
 	years: string | null;
 	details: string | null;
+	image_key: string | null;
+	image_content_type: string | null;
 	created_at: number;
 }
 
@@ -285,7 +287,7 @@ export async function updateEvent(
 			export async function listArtists(db: D1Database): Promise<ArtistRow[]> {
 			const result = await db
 			.prepare(
-			'SELECT artists.id, artists.name, artists.years, artists.details, artists.created_at, ' +
+			'SELECT artists.id, artists.name, artists.years, artists.details, artists.image_key, artists.image_content_type, artists.created_at, ' +
 				'(SELECT MAX(events.event_date) FROM events WHERE events.artist_id = artists.id) AS latest_event_date ' +
 				'FROM artists ' +
 				'ORDER BY (latest_event_date IS NULL), latest_event_date DESC, artists.id DESC'
@@ -299,7 +301,9 @@ export async function updateEvent(
 			*/
 			export async function getArtist(db: D1Database, id: number): Promise<ArtistRow | null> {
 			const row = await db
-			.prepare('SELECT id, name, years, details, created_at FROM artists WHERE id = ?1')
+			.prepare(
+				'SELECT id, name, years, details, image_key, image_content_type, created_at FROM artists WHERE id = ?1'
+			)
 			.bind(id)
 			.first<ArtistRow>();
 			return row ?? null;
@@ -317,7 +321,7 @@ export async function updateEvent(
 			const result = await db
 			.prepare(
 			'UPDATE artists SET name = ?1, years = ?2 ' +
-				'WHERE id = ?3 RETURNING id, name, years, details, created_at'
+				'WHERE id = ?3 RETURNING id, name, years, details, image_key, image_content_type, created_at'
 			)
 			.bind(input.name, input.years ?? null, id)
 			.first<ArtistRow>();
@@ -334,7 +338,7 @@ export async function updateEvent(
 			const result = await db
 			.prepare(
 			'INSERT INTO artists (name, years) ' +
-				'VALUES (?1, ?2) RETURNING id, name, years, details, created_at'
+				'VALUES (?1, ?2) RETURNING id, name, years, details, image_key, image_content_type, created_at'
 			)
 			.bind(input.name, input.years ?? null)
 			.first<ArtistRow>();
@@ -354,12 +358,31 @@ export async function updateArtistDetails(
 	const result = await db
 		.prepare(
 			'UPDATE artists SET details = ?1 ' +
-				'WHERE id = ?2 RETURNING id, name, years, details, created_at'
+				'WHERE id = ?2 RETURNING id, name, years, details, image_key, image_content_type, created_at'
 		)
 		.bind(details, id)
 		.first<ArtistRow>();
 	return result ?? null;
 	}
+
+/**
+ * Sætter (eller rydder) profilbilledet på en artist og returnerer rækken.
+ * Returnerer null hvis rækken ikke findes. Send null for at fjerne billedet.
+ */
+export async function updateArtistImage(
+	db: D1Database,
+	id: number,
+	image: { r2Key: string; contentType: string } | null
+): Promise<ArtistRow | null> {
+	const result = await db
+		.prepare(
+			'UPDATE artists SET image_key = ?1, image_content_type = ?2 ' +
+				'WHERE id = ?3 RETURNING id, name, years, details, image_key, image_content_type, created_at'
+		)
+		.bind(image?.r2Key ?? null, image?.contentType ?? null, id)
+		.first<ArtistRow>();
+	return result ?? null;
+}
 
 /**
  * Sletter en artist-række. Tilhørende links fjernes via ON DELETE CASCADE.

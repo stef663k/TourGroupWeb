@@ -4,7 +4,9 @@ import {
 	createArtist,
 	deleteArtist,
 	getArtist,
+	updateArtist,
 	updateArtistDetails,
+	updateArtistImage,
 	listArtistLinks,
 	getArtistLink,
 	addArtistLink,
@@ -35,6 +37,8 @@ function createFakeD1(): FakeD1 {
 		name: string;
 		years: string | null;
 		details: string | null;
+		image_key: string | null;
+		image_content_type: string | null;
 		created_at: number;
 	}[] = [];
 	const links: {
@@ -60,20 +64,42 @@ function createFakeD1(): FakeD1 {
 					name,
 					years,
 					details: null,
+					image_key: null,
+					image_content_type: null,
 					created_at: Math.floor(Date.now() / 1000)
 				};
 				rows.push(row);
 				return row as T;
 			}
-			if (q.startsWith('SELECT id, name, years, details, created_at FROM artists WHERE id')) {
+			if (
+				q.startsWith(
+					'SELECT id, name, years, details, image_key, image_content_type, created_at FROM artists WHERE id'
+				)
+			) {
 				const [id] = args as [number];
 				return (rows.find((r) => r.id === id) ?? null) as T | null;
+			}
+			if (q.startsWith('UPDATE artists SET name = ?1, years = ?2')) {
+				const [name, years, id] = args as [string, string | null, number];
+				const row = rows.find((r) => r.id === id);
+				if (!row) return null;
+				row.name = name;
+				row.years = years;
+				return row as T;
 			}
 			if (q.startsWith('UPDATE artists SET details')) {
 				const [details, id] = args as [string | null, number];
 				const row = rows.find((r) => r.id === id);
 				if (!row) return null;
 				row.details = details;
+				return row as T;
+			}
+			if (q.startsWith('UPDATE artists SET image_key = ?1, image_content_type = ?2')) {
+				const [imageKey, imageContentType, id] = args as [string | null, string | null, number];
+				const row = rows.find((r) => r.id === id);
+				if (!row) return null;
+				row.image_key = imageKey;
+				row.image_content_type = imageContentType;
 				return row as T;
 			}
 			if (q.startsWith('INSERT INTO artist_links')) {
@@ -100,7 +126,7 @@ function createFakeD1(): FakeD1 {
 			const q = normalized();
 			if (
 				q.startsWith(
-					'SELECT artists.id, artists.name, artists.years, artists.details, artists.created_at'
+					'SELECT artists.id, artists.name, artists.years, artists.details, artists.image_key, artists.image_content_type'
 				)
 			) {
 				// Emulerer den korrelerede underforespørgsel: nyeste event-dato pr. artist.
@@ -291,6 +317,67 @@ describe('artists', () => {
 
 	it('returnerer null når details opdateres på en ukendt række', async () => {
 		expect(await updateArtistDetails(db, 999, 'tekst')).toBeNull();
+	});
+
+	it('starter uden profilbillede', async () => {
+		const created = await createArtist(db, { name: 'Faustix' });
+		expect(created.image_key).toBeNull();
+		expect(created.image_content_type).toBeNull();
+	});
+
+	it('gemmer og læser et profilbillede', async () => {
+		const created = await createArtist(db, { name: 'Faustix' });
+		const updated = await updateArtistImage(db, created.id, {
+			r2Key: 'artist/faustix/abc.jpg',
+			contentType: 'image/jpeg'
+		});
+		expect(updated?.image_key).toBe('artist/faustix/abc.jpg');
+		expect(updated?.image_content_type).toBe('image/jpeg');
+
+		const fetched = await getArtist(db, created.id);
+		expect(fetched?.image_key).toBe('artist/faustix/abc.jpg');
+	});
+
+	it('udskifter et profilbillede', async () => {
+		const created = await createArtist(db, { name: 'Faustix' });
+		await updateArtistImage(db, created.id, {
+			r2Key: 'artist/faustix/old.jpg',
+			contentType: 'image/jpeg'
+		});
+		const updated = await updateArtistImage(db, created.id, {
+			r2Key: 'artist/faustix/new.png',
+			contentType: 'image/png'
+		});
+		expect(updated?.image_key).toBe('artist/faustix/new.png');
+		expect(updated?.image_content_type).toBe('image/png');
+	});
+
+	it('fjerner et profilbillede når der sendes null', async () => {
+		const created = await createArtist(db, { name: 'Faustix' });
+		await updateArtistImage(db, created.id, {
+			r2Key: 'artist/faustix/abc.jpg',
+			contentType: 'image/jpeg'
+		});
+		const cleared = await updateArtistImage(db, created.id, null);
+		expect(cleared?.image_key).toBeNull();
+		expect(cleared?.image_content_type).toBeNull();
+	});
+
+	it('returnerer null når billede opdateres på en ukendt række', async () => {
+		expect(
+			await updateArtistImage(db, 999, { r2Key: 'artist/x/y.jpg', contentType: 'image/jpeg' })
+		).toBeNull();
+	});
+
+	it('lister profilbillede med listen af artister', async () => {
+		const created = await createArtist(db, { name: 'Faustix' });
+		await updateArtistImage(db, created.id, {
+			r2Key: 'artist/faustix/abc.jpg',
+			contentType: 'image/jpeg'
+		});
+
+		const rows = await listArtists(db);
+		expect(rows[0].image_key).toBe('artist/faustix/abc.jpg');
 	});
 
 	it('tilføjer og lister links for en artist', async () => {

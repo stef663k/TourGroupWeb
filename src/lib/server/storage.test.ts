@@ -4,6 +4,7 @@ import {
 	sniffImageType,
 	imageExtension,
 	buildImageKey,
+	buildArtistImageKey,
 	publicImageUrl,
 	validateImage,
 	MAX_IMAGE_BYTES,
@@ -118,6 +119,19 @@ describe('buildImageKey', () => {
 	it('bruger den korrekte endelse pr. type', () => {
 		expect(buildImageKey('e', 'image/png', 'x', 'photo')).toBe('eventModal/e/x.png');
 		expect(buildImageKey('e', 'image/avif', 'x', 'cover')).toBe('events/e/cover/x.avif');
+	});
+});
+
+describe('buildArtistImageKey', () => {
+	it('lægger profilbilledet under artist/<slug>/', () => {
+		expect(buildArtistImageKey('faustix', 'image/jpeg', 'abc-123')).toBe(
+			'artist/faustix/abc-123.jpg'
+		);
+	});
+
+	it('bruger den korrekte endelse pr. type', () => {
+		expect(buildArtistImageKey('a', 'image/png', 'x')).toBe('artist/a/x.png');
+		expect(buildArtistImageKey('a', 'image/webp', 'x')).toBe('artist/a/x.webp');
 	});
 });
 

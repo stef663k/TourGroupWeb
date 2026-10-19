@@ -23,6 +23,8 @@ function createFakeD1() {
 		name: string;
 		years: string | null;
 		details: string | null;
+		image_key: string | null;
+		image_content_type: string | null;
 		created_at: number;
 	}[] = [];
 	const images: {
@@ -51,7 +53,7 @@ function createFakeD1() {
 				}
 				if (
 					q.startsWith(
-						'SELECT artists.id, artists.name, artists.years, artists.details, artists.created_at'
+						'SELECT artists.id, artists.name, artists.years, artists.details, artists.image_key, artists.image_content_type'
 					)
 				) {
 					return { results: artists as T[], success: true };
@@ -92,7 +94,7 @@ function createFakeD1() {
 					const [id] = args as [number];
 					return (events.find((e) => e.id === id) ?? null) as T | null;
 				}
-				if (q.startsWith('SELECT id, name, years, details, created_at FROM artists WHERE id')) {
+				if (q.startsWith('SELECT id, name, years, details, image_key, image_content_type, created_at FROM artists WHERE id')) {
 					const [id] = args as [number];
 					return (artists.find((a) => a.id === id) ?? null) as T | null;
 				}
@@ -214,6 +216,8 @@ function createFakeD1() {
 				name: row.name,
 				years: null,
 				details: null,
+				image_key: null,
+				image_content_type: null,
 				created_at: 0
 			});
 		}
