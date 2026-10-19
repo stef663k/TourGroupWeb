@@ -76,13 +76,14 @@
   });
 
   let fileInput = $state<HTMLInputElement>();
-  let compressed: File | null = $state(null);
-  let previewUrl: string | null = $state(null);
+  // Én post pr. valgt fil. Hver post holdes adskilt, så flere billeder kan
+  // komprimeres og uploades i samme indsendelse.
+  let items = $state<{ compressed: File; previewUrl: string }[]>([]);
   let compressing = $state(false);
   let imageNote: string | null = $state(null);
 
   function close() {
-    revokePreview();
+    clearSelection();
     onclose();
   }
 
@@ -90,11 +91,22 @@
     if (e.key === 'Escape') close();
   }
 
-  function revokePreview() {
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-      previewUrl = null;
-    }
+  function revokeItems() {
+    for (const item of items) URL.revokeObjectURL(item.previewUrl);
+  }
+
+  function clearSelection() {
+    revokeItems();
+    items = [];
+    imageNote = null;
+  }
+
+  // Fjern en enkelt valgt fil før den gemmes (fx hvis brugeren kom til at
+  // vælge det forkerte billede). Frigør dens preview-URL og opdatér noten.
+  function removeItem(previewUrl: string) {
+    URL.revokeObjectURL(previewUrl);
+    items = items.filter((item) => item.previewUrl !== previewUrl);
+    if (items.length === 0) imageNote = null;
   }
 
   function formatSize(bytes: number): string {
@@ -105,26 +117,35 @@
 
   async function onFileChange(e: Event) {
     const input = e.currentTarget as HTMLInputElement;
-    const file = input.files?.[0] ?? null;
+    const files = Array.from(input.files ?? []);
 
-    revokePreview();
-    compressed = null;
-    imageNote = null;
-
-    if (!file) return;
+    clearSelection();
+    if (files.length === 0) return;
 
     compressing = true;
+    let savedBytes = 0;
     try {
-      const result = await compressImage(file);
-      compressed = result;
-      previewUrl = URL.createObjectURL(result);
-      if (result.size < file.size) {
-        imageNote = `Compressed from ${formatSize(file.size)} to ${formatSize(result.size)}.`;
+      for (const file of files) {
+        let result: File;
+        try {
+          result = await compressImage(file);
+        } catch {
+          // Kunne ikke komprimere (fx HEIC uden decoder i browseren). Behold
+          // originalen og lad serveren give en klar fejl hvis den afvises.
+          result = file;
+        }
+        if (result.size < file.size) savedBytes += file.size - result.size;
+        items = [
+          ...items,
+          { compressed: result, previewUrl: URL.createObjectURL(result) }
+        ];
       }
-    } catch {
-      compressed = file;
-      previewUrl = URL.createObjectURL(file);
-      imageNote = 'Could not compress the image — uploading the original.';
+      if (savedBytes > 0) {
+        imageNote =
+          files.length > 1
+            ? `Compressed ${files.length} images (saved ${formatSize(savedBytes)}).`
+            : `Compressed, saving ${formatSize(savedBytes)}.`;
+      }
     } finally {
       compressing = false;
     }
@@ -132,22 +153,20 @@
 
   function onSubmitImage() {
     return async ({
-      result,
       update
     }: {
-      result: { type: string };
       update: (opts?: { reset?: boolean }) => Promise<void>;
     }) => {
-      if (compressed && fileInput && fileInput.files?.[0] !== compressed) {
+      if (fileInput && items.length > 0) {
+        // Overskriv fil-feltet med de komprimerede billeder, så serveren får
+        // de komprimerede filer i stedet for originalerne.
         const dt = new DataTransfer();
-        dt.items.add(compressed);
+        for (const item of items) dt.items.add(item.compressed);
         fileInput.files = dt.files;
       }
       await update({ reset: true });
       if (fileInput) fileInput.value = '';
-      revokePreview();
-      compressed = null;
-      imageNote = null;
+      clearSelection();
     };
   }
 
@@ -173,7 +192,7 @@
     };
   }
 
-  $effect(() => () => revokePreview());
+  $effect(() => () => revokeItems());
 </script>
 
 <svelte:window onkeydown={onKeydown} />
@@ -285,6 +304,7 @@
               name="file"
               type="file"
               accept="image/*"
+              multiple
               required
               bind:this={fileInput}
               onchange={onFileChange}
@@ -298,12 +318,31 @@
               <p class="note">{imageNote}</p>
             {/if}
 
-            {#if previewUrl}
-              <img class="preview" src={previewUrl} alt="Selected upload preview" />
+            {#if items.length > 0}
+              <ul class="previews">
+                {#each items as item, index (item.previewUrl)}
+                  <li>
+                    <img src={item.previewUrl} alt="Selected upload preview {index + 1}" />
+                    <button
+                      type="button"
+                      class="remove-preview"
+                      aria-label="Remove selected image {index + 1}"
+                      title="Remove"
+                      onclick={() => removeItem(item.previewUrl)}
+                    >
+                      ×
+                    </button>
+                  </li>
+                {/each}
+              </ul>
             {/if}
 
-            <button type="submit" class="save" disabled={compressing}>
-              {compressing ? 'Compressing…' : 'Add photo'}
+            <button type="submit" class="save" disabled={compressing || items.length === 0}>
+              {compressing
+                ? 'Compressing…'
+                : items.length > 1
+                  ? `Add ${items.length} photos`
+                  : 'Add photo'}
             </button>
           </form>
         {/if}
@@ -547,14 +586,51 @@
     border-top: 1px solid var(--line);
   }
 
-  .preview {
+  .previews {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+    gap: 0.875rem;
+    margin: 0.25rem 0 0;
+    padding: 0;
+    }
+
+    .previews li {
+    position: relative;
+    }
+
+    .previews img {
+    display: block;
     width: 100%;
-    max-width: 12rem;
-    aspect-ratio: 4 / 3;
+    aspect-ratio: 1;
     object-fit: cover;
     border: 1px solid var(--line);
     border-radius: 0.5rem;
-  }
+    }
+
+    .remove-preview {
+    position: absolute;
+    top: 0.25rem;
+    right: 0.25rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    line-height: 1;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.6);
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.2s var(--ease);
+    }
+
+    .remove-preview:hover,
+    .remove-preview:focus-visible {
+    background: #ff6b6b;
+    }
 
   .note {
     margin: 0;

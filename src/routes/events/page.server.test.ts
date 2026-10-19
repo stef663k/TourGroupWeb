@@ -1110,7 +1110,32 @@ describe('createEvent action', () => {
 		expect(db._images[0].is_cover).toBe(0);
 		});
 
-	it('afviser en for lang billedtekst', async () => {
+		it('gemmer flere billeder i samme upload', async () => {
+		const db = createFakeD1();
+		seed(db);
+		const bucket = createFakeBucket();
+		const platform = { env: { DB: db, Bucket: bucket } } as unknown as App.Platform;
+
+		const form = new FormData();
+		form.set('id', '1');
+		form.append('file', jpegFile());
+		form.append('file', jpegFile());
+		form.append('file', jpegFile());
+		const res = await runAddEventImage(form, platform);
+
+		expect(res.success).toBe(true);
+		expect(bucket._puts).toHaveBeenCalledTimes(3);
+		expect(db._images).toHaveLength(3);
+		for (const image of db._images) {
+			expect(image.event_id).toBe(1);
+			expect(image.is_cover).toBe(0);
+		}
+		// Unikke nøgler pr. billede, så de ikke overskriver hinanden i R2.
+		const keys = new Set(bucket._puts.mock.calls.map((call) => call[0]));
+		expect(keys.size).toBe(3);
+		});
+
+		it('afviser en for lang billedtekst', async () => {
 		const db = createFakeD1();
 		seed(db);
 		const bucket = createFakeBucket();

@@ -367,38 +367,50 @@ export const actions: Actions = {
 		const caption = String(data.get('caption') ?? '').trim();
 		if (caption.length > 200) return fail(400, { error: 'The caption is too long.' });
 
-		const file = data.get('file');
-		if (!(file instanceof File) || file.size === 0) {
+		// Understøtter både én og flere filer i samme upload. Tomme
+		// fil-inputs (fx "no file selected") filtreres fra.
+		const files = data
+			.getAll('file')
+			.filter((entry): entry is File => entry instanceof File && entry.size > 0);
+		if (files.length === 0) {
 			return fail(400, { error: 'Choose an image.' });
 		}
-		if (file.size > MAX_IMAGE_BYTES) {
-			return fail(400, { error: 'The file is too large (max 8 MB).' });
+		for (const file of files) {
+			if (file.size > MAX_IMAGE_BYTES) {
+				return fail(400, { error: 'The file is too large (max 8 MB).' });
+			}
 		}
 
 		const event = await getEvent(db, id);
 		if (!event) return fail(404, { error: 'The event does not exist.' });
 
-		const head = await readImageHead(file);
-		const validation = validateImage({
-			contentType: file.type,
-			size: file.size,
-			head
-		});
-		if (!validation.ok) return fail(400, { error: validation.error });
-
-		const key = buildImageKey(event.slug, validation.contentType, crypto.randomUUID(), 'photo');
+		// Valider alle filer før vi skriver noget, så en ugyldig fil i en
+		// fler-fils-upload ikke efterlader delvise resultater.
+		const validated: { file: File; contentType: string }[] = [];
+		for (const file of files) {
+			const head = await readImageHead(file);
+			const validation = validateImage({
+				contentType: file.type,
+				size: file.size,
+				head
+			});
+			if (!validation.ok) return fail(400, { error: validation.error });
+			validated.push({ file, contentType: validation.contentType });
+		}
 
 		try {
-			await bucket.put(key, await file.arrayBuffer(), {
-				httpMetadata: { contentType: validation.contentType }
-			});
-
-			await addEventImage(db, {
-				eventId: id,
-				r2Key: key,
-				caption: caption || null,
-				contentType: validation.contentType
-			});
+			for (const { file, contentType } of validated) {
+				const key = buildImageKey(event.slug, contentType, crypto.randomUUID(), 'photo');
+				await bucket.put(key, await file.arrayBuffer(), {
+					httpMetadata: { contentType }
+				});
+				await addEventImage(db, {
+					eventId: id,
+					r2Key: key,
+					caption: caption || null,
+					contentType
+				});
+			}
 		} catch (err) {
 			console.error('Kunne ikke tilføje billede:', err);
 			return fail(500, { error: 'Could not add the image. Please try again later.' });
