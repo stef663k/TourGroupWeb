@@ -64,16 +64,18 @@
 <CookieConsent />
 
 <style>
+	/* Logoet må ikke krympe, og det må ikke skubbe
+	   menu-linksene ud af pladsen på store skærme. */
 	.brand {
 		display: inline-flex;
 		align-items: center;
+		flex: 0 0 auto;
 	}
 
 	.brand-logo {
 		display: block;
-		height: clamp(2rem, 4vw, 2.75rem);
-		width: auto;
-		aspect-ratio: 931 / 150;
-		object-fit: contain;
+		height: auto;
+		width: clamp(7rem, 26vw, 14rem);
+		max-width: 100%;
 	}
 </style>
