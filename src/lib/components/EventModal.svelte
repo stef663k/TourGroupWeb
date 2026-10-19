@@ -542,7 +542,7 @@
   .images {
     list-style: none;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+    grid-template-columns: repeat(auto-fill, 10rem);
     gap: 0.75rem;
   }
 
