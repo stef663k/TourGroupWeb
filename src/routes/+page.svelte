@@ -57,21 +57,17 @@
   <ul class="work">
     {#each data.artists as work (work.id)}
       <li class="work-row">
-        {#if work.latestEventId}
-          <a class="work-link" href="/events#event-{work.latestEventId}">
-            <span class="work-name">{work.name}</span>
-            {#if work.years}
-              <span class="work-years">{work.years}</span>
-            {/if}
-          </a>
-        {:else}
-          <div class="work-link">
-            <span class="work-name">{work.name}</span>
-            {#if work.years}
-              <span class="work-years">{work.years}</span>
-            {/if}
-          </div>
-        {/if}
+        <button
+          type="button"
+          class="work-link"
+          aria-haspopup="dialog"
+          onclick={() => (modalArtist = work)}
+        >
+          <span class="work-name">{work.name}</span>
+          {#if work.years}
+            <span class="work-years">{work.years}</span>
+          {/if}
+        </button>
         {#if data.owner}
           <button
             type="button"
@@ -108,24 +104,6 @@
             </button>
           </form>
         {/if}
-      </li>
-      <li class="work-foot">
-        {#if work.latestEventId}
-          <a class="work-latest" href="/events#event-{work.latestEventId}">
-            latest event
-            <span class="work-arrow" aria-hidden="true">→</span>
-          </a>
-        {/if}
-        <button
-          type="button"
-          class="more"
-          aria-haspopup="dialog"
-          aria-label="More about {work.name}"
-          onclick={() => (modalArtist = work)}
-        >
-          More
-          <span class="more-arrow" aria-hidden="true">→</span>
-        </button>
       </li>
       {#if data.owner && editingId === work.id}
         <li class="edit-row">
@@ -389,42 +367,6 @@
     height: 1.0625rem;
   }
 
-  .work-foot {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.25rem;
-    padding: 0 clamp(0.5rem, 2vw, 1rem) clamp(0.75rem, 2vw, 1rem);
-  }
-
-  .more {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0;
-    font-family: inherit;
-    font-size: 0.875rem;
-    color: var(--fg-muted);
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    transition: color 0.2s var(--ease);
-  }
-
-  .more-arrow {
-    transition: transform 0.2s var(--ease);
-  }
-
-  .more:hover,
-  .more:focus-visible {
-    color: var(--accent);
-  }
-
-  .more:hover .more-arrow,
-  .more:focus-visible .more-arrow {
-    transform: translateX(0.25rem);
-  }
-
   .edit-row {
     padding: 0 clamp(0.5rem, 2vw, 1rem) clamp(1rem, 3vw, 1.5rem);
   }
@@ -506,11 +448,6 @@
     border-top: 1px solid var(--line-strong);
   }
 
-  /* "More"-linket hører til rækken ovenfor, så der må ikke være en skillelinje imellem. */
-  .work-row + .work-foot {
-    border-top: none;
-  }
-
   .work-link {
     display: grid;
     grid-template-columns: 1fr auto;
@@ -518,9 +455,18 @@
     gap: 0.75rem;
     width: 100%;
     padding: clamp(1rem, 3vw, 1.5rem) clamp(0.5rem, 2vw, 1rem);
+    font-family: inherit;
+    text-align: left;
     color: var(--fg);
-    border-bottom: none;
+    background: transparent;
+    border: none;
+    cursor: pointer;
     transition: color 0.2s var(--ease);
+  }
+
+  .work-link:hover,
+  .work-link:focus-visible {
+    color: var(--accent);
   }
 
   .work-name {
@@ -533,40 +479,6 @@
     color: var(--fg-muted);
     font-size: 0.875rem;
     white-space: nowrap;
-  }
-
-  .work-latest {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    color: var(--fg-muted);
-    font-size: 0.75rem;
-    letter-spacing: 0.02em;
-    white-space: nowrap;
-    border-bottom: none;
-    transition: color 0.2s var(--ease);
-  }
-
-  .work-latest:hover,
-  .work-latest:focus-visible {
-    color: var(--accent);
-  }
-
-  .work-latest:hover .work-arrow,
-  .work-latest:focus-visible .work-arrow {
-    color: var(--accent);
-    transform: translateX(0.25rem);
-  }
-
-  .work-arrow {
-    color: var(--fg-muted);
-    font-size: clamp(1rem, 2.5vw, 1.25rem);
-    transition: transform 0.2s var(--ease), color 0.2s var(--ease);
-  }
-
-  a.work-link:hover,
-  a.work-link:focus-visible {
-    color: var(--accent);
   }
 
   .partners {
