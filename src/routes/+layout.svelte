@@ -74,7 +74,6 @@
 		height: auto;
 		width: clamp(8rem, 25vw, 22rem);
 		max-width: 100%;
-		aspect-ratio: 931 / 150;
 		object-fit: contain;
 	}
 </style>

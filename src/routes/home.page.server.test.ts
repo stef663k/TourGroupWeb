@@ -368,21 +368,21 @@ describe('home load', () => {
 	it('returnerer logo-URL via /images-ruten som standard', async () => {
 		const db = createFakeD1();
 		const data = await runLoad(makePlatform(db));
-		expect(data.logoUrl).toBe('/images/logo/logoudentegn.png');
-	});
+		expect(data.logoUrl).toBe('/images/logo/LogoNoBorder.png');
+		});
 
-	it('bruger R2_PUBLIC_URL til logoet når den er sat', async () => {
+		it('bruger R2_PUBLIC_URL til logoet når den er sat', async () => {
 		const db = createFakeD1();
 		const data = await runLoad(makePlatform(db, 'https://cdn.example.com'));
-		expect(data.logoUrl).toBe('https://cdn.example.com/logo/logoudentegn.png');
+		expect(data.logoUrl).toBe('https://cdn.example.com/logo/LogoNoBorder.png');
 	});
 
 	it('giver logo-URL også når databasen ikke er konfigureret', async () => {
 		const data = await runLoad(undefined);
-		expect(data.logoUrl).toBe('/images/logo/logoudentegn.png');
-	});
+		expect(data.logoUrl).toBe('/images/logo/LogoNoBorder.png');
+		});
 
-	it('returnerer hero-baggrund via /images-ruten som standard', async () => {
+		it('returnerer hero-baggrund via /images-ruten som standard', async () => {
 		const db = createFakeD1();
 		const data = await runLoad(makePlatform(db));
 		expect(data.heroBackgroundUrl).toBe('/images/Lukas/HomeBackground.jpg');

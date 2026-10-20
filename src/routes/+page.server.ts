@@ -48,7 +48,7 @@ function validateLink(link: string): string | null {
 	return null;
 }
 
-const LOGO_KEY = 'logo/logoudentegn.png';
+const LOGO_KEY = 'logo/LogoNoBorder.png';
 const HERO_BACKGROUND_KEY = 'Lukas/HomeBackground.jpg';
 
 /**

@@ -1,7 +1,7 @@
 import type { LayoutServerLoad } from './$types';
 import { publicImageUrl } from '$lib/server/storage';
 
-const LOGO_KEY = 'logo/logoudentegn.png';
+const LOGO_KEY = 'logo/LogoNoBorder.png';
 
 export const load: LayoutServerLoad = ({ locals, platform }) => {
 	const baseUrl = platform?.env?.R2_PUBLIC_URL;
