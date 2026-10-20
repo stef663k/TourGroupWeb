@@ -27,7 +27,6 @@
 
 <!-- 01 — Kommende events -->
 <section>
-  <div class="label">01 — events</div>
   {#if data.events.length === 0}
     <p class="lead">No events right now — check back soon.</p>
   {:else}

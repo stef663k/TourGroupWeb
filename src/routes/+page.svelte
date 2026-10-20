@@ -126,7 +126,7 @@
 
 <!-- 01 — Artists -->
 <section class:half-bottom={data.owner && data.artists.length > 1}>
-  <div class="label">01 — Artists</div>
+  <div class="label">Artists</div>
   <ul class="work">
     {#each data.artists as work (work.id)}
       <li class="work-row">
@@ -317,7 +317,7 @@
 
 <!-- 02 — Samarbejde med virksomheder -->
 <section>
-  <div class="label">02 — Working with companies</div>
+  <div class="label">Clients</div>
   <ul class="partners">
     {#each data.companies as company (company.id)}
       <li class="partner-row">
