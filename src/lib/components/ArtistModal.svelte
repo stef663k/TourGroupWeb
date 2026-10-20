@@ -1,6 +1,7 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import EventCard from './EventCard.svelte';
+  import EventModal from './EventModal.svelte';
 
   interface ArtistLink {
     id: number;
@@ -38,13 +39,49 @@
     events?: ArtistEvent[];
   }
 
+  import type { ModalView } from '$lib/modalView';
+
   let {
     artist,
     owner = false,
+    view = 'artist',
+    selectedEvent = null,
+    oneventselect,
+    onback,
     onclose
-  }: { artist: Artist; owner?: boolean; onclose: () => void } = $props();
+  }: {
+    artist: Artist;
+    owner?: boolean;
+    view?: ModalView;
+    selectedEvent?: ArtistEvent | null;
+    oneventselect?: (event: ArtistEvent) => void;
+    onback?: () => void;
+    onclose: () => void;
+  } = $props();
 
   let artistEvents = $derived(artist.events ?? []);
+
+  let modalEl = $state<HTMLElement | null>(null);
+  let closeBtnEl = $state<HTMLButtonElement | null>(null);
+
+  // Elementer der kan modtage fokus, brugt til at holde fokus inde i modalen.
+  const FOCUSABLE_SELECTOR =
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+  function focusables(): HTMLElement[] {
+    if (!modalEl) return [];
+    return Array.from(modalEl.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+      (el) => el.offsetParent !== null || el === document.activeElement
+    );
+  }
+
+  function selectEvent(event: ArtistEvent) {
+    oneventselect?.(event);
+  }
+
+  function goBack() {
+    onback?.();
+  }
 
   // The modal is mounted per artist, so capturing the initial value is intentional.
   // svelte-ignore state_referenced_locally
@@ -68,8 +105,44 @@
   }
 
   function onKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') close();
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      close();
+      return;
+    }
+
+    // Hold tabulator-fokus inde i modalen, uanset hvilken visning der er aktiv.
+    if (e.key === 'Tab') {
+      const items = focusables();
+      if (items.length === 0) {
+        e.preventDefault();
+        return;
+      }
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey) {
+        if (active === first || !modalEl?.contains(active)) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else if (active === last || !modalEl?.contains(active)) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
   }
+
+  // Sæt fokus på modalens første element når modalen åbnes, og flyt fokus
+  // tilbage til modalens start når brugeren skifter visning, så fokus ikke
+  // ender udenfor. Luk-knappen findes i begge visninger.
+  $effect(() => {
+    // Læs view, så effekten kører igen ved visningsskift.
+    void view;
+    closeBtnEl?.focus();
+    // Fallback hvis luk-knappen ikke er tilgængelig endnu (fx i event-visning).
+    if (!closeBtnEl) focusables()[0]?.focus();
+  });
 
   // Submit the details form without resetting it, so the saved text stays visible
   // after the action completes.
@@ -103,19 +176,45 @@
     if (e.target === e.currentTarget) close();
   }}
 >
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="artist-modal-title">
-    <div class="modal-head">
-      <div class="modal-title-group">
-        {#if artist.imageUrl}
-          <img class="modal-thumb" src={artist.imageUrl} alt={artist.name} />
-        {/if}
-        <h2 id="artist-modal-title">{artist.name}</h2>
+  <div
+    class="modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby={view === 'event' && selectedEvent
+      ? 'event-modal-title'
+      : 'artist-modal-title'}
+    bind:this={modalEl}
+  >
+    {#if view === 'event' && selectedEvent}
+      <!-- Event-detaljerne vises skrivebeskyttet (owner={false}), fordi
+           event-handlingerne hører til events-siden og ikke til forsiden. -->
+      <EventModal
+        event={selectedEvent}
+        owner={false}
+        embedded
+        backLabel="Tilbage til {artist.name}"
+        onback={goBack}
+        onclose={close}
+      />
+    {:else}
+      <div class="modal-head">
+        <div class="modal-title-group">
+          {#if artist.imageUrl}
+            <img class="modal-thumb" src={artist.imageUrl} alt={artist.name} />
+          {/if}
+          <h2 id="artist-modal-title">{artist.name}</h2>
+        </div>
+        <button
+          type="button"
+          class="close"
+          aria-label="Close"
+          bind:this={closeBtnEl}
+          onclick={close}>×</button
+        >
       </div>
-      <button type="button" class="close" aria-label="Close" onclick={close}>×</button>
-    </div>
 
-    <div class="modal-body">
-      {#if owner}
+      <div class="modal-body">
+        {#if owner}
         <form
           method="POST"
           action="?/updateArtistDetails"
@@ -190,25 +289,26 @@
         {/if}
       </div>
 
-      <!-- Artistens events vises som EventCards. De er altid skrivebeskyttede
-           her, fordi event-handlingerne (redigering/sletning) hører til
-           events-siden og ikke til forsiden, hvor modalen lever. -->
+      <!-- Artistens events vises som EventCards. I stedet for at åbne en ny
+           modal skifter vi modalens indhold til event-visningen, så vi ikke
+           stabler modaler oven på hinanden. -->
       <div class="events-section">
         <h3>Events</h3>
 
         {#if artistEvents.length > 0}
           <ul class="events">
             {#each artistEvents as event (event.id)}
-              <EventCard {event} owner={false} />
+              <EventCard {event} owner={false} onopen={() => selectEvent(event)} />
             {/each}
           </ul>
         {:else}
           <p class="empty">No events yet.</p>
         {/if}
       </div>
-    </div>
-  </div>
-</div>
+      </div>
+      {/if}
+      </div>
+      </div>
 
 <style>
   .overlay {

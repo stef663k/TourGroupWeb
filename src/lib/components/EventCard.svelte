@@ -28,12 +28,25 @@
   let {
     event,
     owner = false,
-    artists = []
-  }: { event: Event; owner?: boolean; artists?: ArtistOption[] } = $props();
+    artists = [],
+    onopen
+  }: {
+    event: Event;
+    owner?: boolean;
+    artists?: ArtistOption[];
+    onopen?: () => void;
+  } = $props();
 
   let editing = $state(false);
   let showModal = $state(false);
   let cardEl = $state<HTMLElement | null>(null);
+
+  // Når kortet vises indlejret (fx i artistmodalen) videresender vi klik til
+  // forælderen i stedet for at åbne endnu en modal oven på den eksisterende.
+  function openDetails() {
+    if (onopen) onopen();
+    else showModal = true;
+  }
 
   // Luk redigeringspanelet når der klikkes uden for kortet.
   $effect(() => {
@@ -145,7 +158,7 @@
       aria-haspopup="dialog"
       aria-expanded={showModal}
       aria-label="More about {event.name}"
-      onclick={() => (showModal = true)}
+      onclick={openDetails}
     >
       More
       <span class="more-arrow" aria-hidden="true">→</span>
@@ -179,7 +192,7 @@
     {/if}
     </li>
 
-<style>
+    <style>
   .event {
     display: flex;
     flex-direction: column;

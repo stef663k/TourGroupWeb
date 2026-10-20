@@ -4,6 +4,12 @@
   import ArtistModal from '$lib/components/ArtistModal.svelte';
   import type { PageData, ActionData } from './$types';
   import type { ComponentProps } from 'svelte';
+  import {
+    openEventView,
+    backToArtistView,
+    resetModalState,
+    type ModalView
+  } from '$lib/modalView';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -32,6 +38,43 @@
   }
 
   let modalArtist = $state<ComponentProps<typeof ArtistModal>['artist'] | null>(null);
+
+  // Typen på det event artistmodalen kan skifte til at vise.
+  type SelectedEvent = NonNullable<ComponentProps<typeof ArtistModal>['selectedEvent']>;
+
+  // Modalen genbruges til både artist- og event-visning, så vi undgår at
+  // stable modaler oven på hinanden. modalView styrer hvilken visning der
+  // vises, og selectedEvent holder styr på det valgte event.
+  let modalView = $state<ModalView>('artist');
+  let selectedEvent = $state<SelectedEvent | null>(null);
+
+  function openArtist(artist: ComponentProps<typeof ArtistModal>['artist']) {
+    modalArtist = artist;
+    const next = backToArtistView<SelectedEvent>();
+    modalView = next.view;
+    selectedEvent = next.selectedEvent;
+  }
+
+  function openModalEvent(event: SelectedEvent) {
+    const next = openEventView<SelectedEvent>(event);
+    modalView = next.view;
+    selectedEvent = next.selectedEvent;
+  }
+
+  function backToArtist() {
+    const next = backToArtistView<SelectedEvent>();
+    modalView = next.view;
+    selectedEvent = next.selectedEvent;
+  }
+
+  // Lukker modalen helt og nulstiller al tilstand, så næste åbning starter
+  // på artist-visningen uden et event der hænger ved.
+  function closeModal() {
+    modalArtist = null;
+    const next = resetModalState<SelectedEvent>();
+    modalView = next.view;
+    selectedEvent = next.selectedEvent;
+  }
 
   // Rækkefølgen ejeren redigerer i. Kopieres fra data.artists når panelet
   // åbnes, så uenige ændringer ikke overskriver den gemte rækkefølge.
@@ -91,7 +134,7 @@
           type="button"
           class="work-link"
           aria-haspopup="dialog"
-          onclick={() => (modalArtist = work)}
+          onclick={() => openArtist(work)}
         >
           {#if work.imageUrl}
             <span class="work-thumb" aria-hidden="true">
@@ -378,7 +421,15 @@
 {/if}
 
 {#if modalArtist}
-  <ArtistModal artist={modalArtist} owner={data.owner} onclose={() => (modalArtist = null)} />
+  <ArtistModal
+    artist={modalArtist}
+    owner={data.owner}
+    view={modalView}
+    {selectedEvent}
+    oneventselect={openModalEvent}
+    onback={backToArtist}
+    onclose={closeModal}
+  />
 {/if}
 
 <style>

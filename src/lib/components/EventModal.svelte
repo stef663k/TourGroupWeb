@@ -28,8 +28,19 @@
     event,
     owner = false,
     artists = [],
+    embedded = false,
+    backLabel = 'Tilbage',
+    onback,
     onclose
-  }: { event: EventData; owner?: boolean; artists?: ArtistOption[]; onclose: () => void } = $props();
+  }: {
+    event: EventData;
+    owner?: boolean;
+    artists?: ArtistOption[];
+    embedded?: boolean;
+    backLabel?: string;
+    onback?: () => void;
+    onclose: () => void;
+  } = $props();
 
   // The modal is mounted per event, so capturing the initial values is intentional.
   // svelte-ignore state_referenced_locally
@@ -88,6 +99,9 @@
   }
 
   function onKeydown(e: KeyboardEvent) {
+    // I indlejret tilstand (inde i artistmodalen) tager den ydre modal sig af
+    // Escape, så vi undgår dobbelt håndtering.
+    if (embedded) return;
     if (e.key === 'Escape') close();
   }
 
@@ -206,20 +220,48 @@
 
 <svelte:window onkeydown={onKeydown} />
 
-<div
-  class="overlay"
-  role="presentation"
-  onclick={(e) => {
-    if (e.target === e.currentTarget) close();
-  }}
->
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="event-modal-title">
-    <div class="modal-head">
-      <h2 id="event-modal-title">{event.name}</h2>
-      <button type="button" class="close" aria-label="Close" onclick={close}>×</button>
-    </div>
+{#if embedded}
+  <!-- Indlejret i artistmodalen: vi viser kun modalens indhold, så den ydre
+       modal (og dens overlay/fokus-fælde) genbruges i stedet for at stable
+       endnu en modal oven på den. -->
+  <div class="modal-head">
+    {#if onback}
+      <button type="button" class="back" onclick={onback}>← {backLabel}</button>
+    {:else}
+      <span></span>
+    {/if}
+    <button type="button" class="close" aria-label="Close" onclick={close}>×</button>
+  </div>
 
-    <div class="modal-body">
+  <div class="modal-body">
+    <h2 id="event-modal-title" class="event-title">{event.name}</h2>
+
+    <div class="modal-content">
+      {@render content()}
+    </div>
+  </div>
+{:else}
+  <div
+    class="overlay"
+    role="presentation"
+    onclick={(e) => {
+      if (e.target === e.currentTarget) close();
+    }}
+  >
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="event-modal-title">
+      <div class="modal-head">
+        <h2 id="event-modal-title">{event.name}</h2>
+        <button type="button" class="close" aria-label="Close" onclick={close}>×</button>
+      </div>
+
+      <div class="modal-body">
+        {@render content()}
+      </div>
+    </div>
+  </div>
+{/if}
+
+{#snippet content()}
       {#if owner}
         <form method="POST" action="?/updateEvent" use:enhance={onSubmitDetails} class="edit-form">
           <input type="hidden" name="id" value={event.id} />
@@ -354,13 +396,11 @@
                   : 'Add photo'}
             </button>
           </form>
-        {/if}
-      </div>
-    </div>
-  </div>
-</div>
+          {/if}
+          </div>
+          {/snippet}
 
-<style>
+          <style>
   .overlay {
     position: fixed;
     inset: 0;
@@ -419,6 +459,39 @@
   .close:focus-visible {
     color: var(--fg);
     background: rgba(255, 255, 255, 0.08);
+  }
+
+  /* Indlejret tilstand: "tilbage"-knap og event-titel. */
+  .back {
+    padding: 0.375rem 0.75rem;
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--fg-muted);
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
+  }
+
+  .back:hover,
+  .back:focus-visible {
+    color: var(--fg);
+    border-color: var(--fg-muted);
+  }
+
+  .event-title {
+    margin: 0;
+    font-size: clamp(1.125rem, 3vw, 1.5rem);
+    letter-spacing: 0.02em;
+  }
+
+  .modal-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
   }
 
   .modal-body {
