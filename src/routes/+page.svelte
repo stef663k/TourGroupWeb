@@ -109,7 +109,7 @@
 
 <svelte:head>
   <title>Tour Group</title>
-  <meta name="description" content="Tour Group — lighting design and production for events." />
+  <meta name="description" content="Tour Group — lighting & Set Design" />
 </svelte:head>
 
 <!-- Fast baggrundsbillede der dækker hele siden og følger med ved scroll -->
@@ -121,7 +121,6 @@
   <h1>
     <img class="hero-logo" src={data.logoUrl} alt="Tour Group" />
   </h1>
-  <p class="lead">Coming soon</p>
 </section>
 
 <!-- 01 — Artists -->
