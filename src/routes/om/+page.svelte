@@ -38,7 +38,7 @@
 
 <!-- 01 — About me -->
 <section class="about-me">
-  <div class="label">01 — About me</div>
+  <div class="label">About me</div>
   {#if data.about.aboutMe}
     <p class="lead">{data.about.aboutMe}</p>
   {:else}
@@ -71,8 +71,8 @@
 </section>
 
 <!-- 02 — What I can do -->
-<section>
-  <div class="label">02 — What I can do</div>
+<section class="what-i-can-do">
+  <div class="label">What I can do</div>
   {#if data.about.whatICanDo}
     <p class="lead">{data.about.whatICanDo}</p>
   {:else}
@@ -148,6 +148,13 @@
 
   .about-me {
     padding-top: 1.5rem;
+    /* Mindre luft under 01, så 02 kommer tættere på. */
+    padding-bottom: clamp(1.5rem, 3vw, 2.5rem);
+  }
+
+  /* Mindre luft over 02-sektionen, så den står tættere på 01. */
+  .what-i-can-do {
+    padding-top: clamp(1.5rem, 3vw, 2.5rem);
   }
 
   .lead {

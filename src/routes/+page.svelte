@@ -781,9 +781,9 @@
   }
 
   /* Når der er et thumbnail til venstre, bliver navnet skubbet mod højre i
-     flex-rækken. Træk det lidt tilbage, så det står mere centreret i rækken. */
+     flex-rækken. Træk det tilbage, så det står tættere på billedet. */
   .work-link.has-thumb .work-name {
-    transform: translateX(clamp(-2rem, -2.5vw, -1.25rem));
+    transform: translateX(clamp(-3rem, -3.5vw, -2rem));
   }
 
   /* Omslutter selve rækken (billede/navn/år) og "latest event", så linket kan
