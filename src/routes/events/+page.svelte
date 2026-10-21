@@ -16,7 +16,6 @@
 
 <!-- Hero -->
 <section class="hero">
-  <div class="label">Events</div>
   <h1>Events</h1>
   {#if data.events.length === 0}
     <p class="lead">No events right now — check back soon.</p>
@@ -25,8 +24,8 @@
   {/if}
 </section>
 
-<!-- 01 — Kommende events -->
-<section>
+<!-- 01 — Kommende events (tæt på hero) -->
+<section class="events-section">
   {#if data.events.length === 0}
     <p class="lead">No events right now — check back soon.</p>
   {:else}
@@ -41,7 +40,7 @@
 {#if data.owner}
   <!-- 02 — Opret event (kun owner) -->
   <section>
-    <div class="label">02 — Create event</div>
+    <div class="label">Create event</div>
     <EventForm
       error={form?.error}
       artists={data.artists}
@@ -76,6 +75,12 @@
   /* Hero er nu blot indhold ovenpå det faste baggrundsbillede. */
   .hero {
     position: relative;
+    padding-bottom: clamp(0.5rem, 2vw, 1rem);
+  }
+
+  /* Events-listen trækkes op under hero, men beholder sidens side-margen. */
+  .events-section {
+    padding-top: 0;
   }
 
   .lead {
@@ -90,6 +95,7 @@
     width: 100%;
     max-width: 32rem;
     margin: 0 auto;
+    text-align: left;
     border-top: 1px solid var(--line);
     border-bottom: 1px solid var(--line);
     }
