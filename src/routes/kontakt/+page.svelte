@@ -14,13 +14,12 @@
 
 <!-- Hero -->
 <section class="hero">
-	<div class="label">Contact</div>
 	<h1>Contact</h1>
 	<p class="lead">Let's create something great together.</p>
 	</section>
 
 	<!-- 01 — Get in touch -->
-	<section>
+	<section class="get-in-touch">
 	<div class="label">01 — Get in touch</div>
 	<h2>Let's have a chat</h2>
 	<p class="lead">For enquiries, bookings or a quick question — reach out by email.</p>
@@ -32,7 +31,7 @@
 	</section>
 
 	<!-- 02 — Follow us -->
-	<section>
+	<section class="follow-us">
 	<div class="label">02 — Follow us</div>
 	<p class="lead">Follow along behind the scenes on Instagram.</p>
 	<p>
@@ -81,6 +80,20 @@
 	/* Hero er nu blot indhold ovenpå det faste baggrundsbillede. */
 	.hero {
 		position: relative;
+		/* Mindre luft under hero, så 01 kommer tættere på. */
+		padding-bottom: clamp(1.5rem, 3vw, 2.5rem);
+	}
+
+	/* Mindre luft over 01, så den kommer tættere på hero. */
+	.get-in-touch {
+		padding-top: clamp(1.5rem, 3vw, 2.5rem);
+		/* Mindre luft under 01, så 02 kommer tættere på. */
+		padding-bottom: clamp(1.5rem, 3vw, 2.5rem);
+	}
+
+	/* Mindre luft over 02, så den står tættere på 01. */
+	.follow-us {
+		padding-top: clamp(1.5rem, 3vw, 2.5rem);
 	}
 
 	.lead {
