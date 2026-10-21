@@ -20,7 +20,7 @@
 
 	<!-- 01 — Get in touch -->
 	<section class="get-in-touch">
-	<div class="label">01 — Get in touch</div>
+	<div class="label">Get in touch</div>
 	<h2>Let's have a chat</h2>
 	<p class="lead">For enquiries, bookings or a quick question — reach out by email.</p>
 	<p>
@@ -32,7 +32,7 @@
 
 	<!-- 02 — Follow us -->
 	<section class="follow-us">
-	<div class="label">02 — Follow us</div>
+	<div class="label">Follow us</div>
 	<p class="lead">Follow along behind the scenes on Instagram.</p>
 	<p>
 		<a
