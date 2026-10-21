@@ -129,23 +129,31 @@
   <ul class="work">
     {#each data.artists as work (work.id)}
       <li class="work-row">
-        <button
-          type="button"
-          class="work-link"
-          class:has-thumb={!!work.imageUrl}
-          aria-haspopup="dialog"
-          onclick={() => openArtist(work)}
+        <div class="work-main">
+          <button
+            type="button"
+            class="work-link"
+            class:has-thumb={!!work.imageUrl}
+            aria-haspopup="dialog"
+            onclick={() => openArtist(work)}
           >
-          {#if work.imageUrl}
-            <span class="work-thumb" aria-hidden="true">
-              <img src={work.imageUrl} alt="" loading="lazy" />
-            </span>
+            {#if work.imageUrl}
+              <span class="work-thumb" aria-hidden="true">
+                <img src={work.imageUrl} alt="" loading="lazy" />
+              </span>
+            {/if}
+            <span class="work-name">{work.name}</span>
+            {#if work.years}
+              <span class="work-years">{work.years}</span>
+            {/if}
+          </button>
+          {#if work.latestEventId}
+            <a class="work-latest" href="/events#event-{work.latestEventId}">
+              latest event
+              <span class="work-arrow" aria-hidden="true">→</span>
+            </a>
           {/if}
-          <span class="work-name">{work.name}</span>
-          {#if work.years}
-            <span class="work-years">{work.years}</span>
-          {/if}
-        </button>
+        </div>
         {#if data.owner}
           <button
             type="button"
@@ -183,14 +191,6 @@
           </form>
         {/if}
       </li>
-      {#if work.latestEventId}
-        <li class="work-foot">
-          <a class="work-latest" href="/events#event-{work.latestEventId}">
-            latest event
-            <span class="work-arrow" aria-hidden="true">→</span>
-          </a>
-        </li>
-      {/if}
       {#if data.owner && editingId === work.id}
         <li class="edit-row">
           <form method="POST" action="?/updateArtist" enctype="multipart/form-data" use:enhance={() => async ({ update }) => { await update(); editingId = null; }} class="edit-form">
@@ -651,14 +651,6 @@
     cursor: not-allowed;
   }
 
-  .work-foot {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.25rem;
-    padding: 0 clamp(0.5rem, 2vw, 1rem) clamp(0.75rem, 2vw, 1rem);
-  }
-
   .edit-row {
     padding: 0 clamp(0.5rem, 2vw, 1rem) clamp(1rem, 3vw, 1.5rem);
   }
@@ -740,14 +732,6 @@
     border-top: 1px solid var(--line-strong);
   }
 
-  /* "latest event" hører til rækken ovenfor, så der må ikke være en skillelinje imellem. */
-  /* Rykkes lidt op, så afstanden under artistbilledet matcher afstanden over det
-     (billedet har ens padding over og under sig i .work-link). */
-  .work-row + .work-foot {
-    border-top: none;
-    margin-top: calc(-1 * clamp(0.5rem, 2vw, 1rem));
-  }
-
   .work-link {
     display: grid;
     display: flex;
@@ -802,14 +786,25 @@
     transform: translateX(clamp(-2rem, -2.5vw, -1.25rem));
   }
 
+  /* Omslutter selve rækken (billede/navn/år) og "latest event", så linket kan
+     placeres absolut under årstallene uden at påvirke rækkens højde/følgende rækker. */
+  .work-main {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
   .work-years {
-    flex: 0 0 auto;
     color: var(--fg-muted);
     font-size: 0.875rem;
     white-space: nowrap;
   }
 
   .work-latest {
+    position: absolute;
+    right: clamp(0.5rem, 2vw, 1rem);
+    top: 50%;
+    transform: translateY(0.75rem);
     display: inline-flex;
     align-items: center;
     gap: 0.375rem;
