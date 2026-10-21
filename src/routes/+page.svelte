@@ -132,9 +132,10 @@
         <button
           type="button"
           class="work-link"
+          class:has-thumb={!!work.imageUrl}
           aria-haspopup="dialog"
           onclick={() => openArtist(work)}
-        >
+          >
           {#if work.imageUrl}
             <span class="work-thumb" aria-hidden="true">
               <img src={work.imageUrl} alt="" loading="lazy" />
@@ -740,8 +741,11 @@
   }
 
   /* "latest event" hører til rækken ovenfor, så der må ikke være en skillelinje imellem. */
+  /* Rykkes lidt op, så afstanden under artistbilledet matcher afstanden over det
+     (billedet har ens padding over og under sig i .work-link). */
   .work-row + .work-foot {
     border-top: none;
+    margin-top: calc(-1 * clamp(0.5rem, 2vw, 1rem));
   }
 
   .work-link {
@@ -790,6 +794,12 @@
     text-align: center;
     font-size: clamp(1rem, 2.5vw, 1.25rem);
     letter-spacing: 0.02em;
+  }
+
+  /* Når der er et thumbnail til venstre, bliver navnet skubbet mod højre i
+     flex-rækken. Træk det lidt tilbage, så det står mere centreret i rækken. */
+  .work-link.has-thumb .work-name {
+    transform: translateX(clamp(-2rem, -2.5vw, -1.25rem));
   }
 
   .work-years {
