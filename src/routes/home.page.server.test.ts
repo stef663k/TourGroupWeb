@@ -36,10 +36,11 @@ function createFakeD1() {
 		description: string | null;
 		details: string | null;
 		link: string | null;
+		link_label: string | null;
 		artist_id: number | null;
 		created_at: number;
-	}[] = [];
-	const companies: {
+		}[] = [];
+		const companies: {
 		id: number;
 		name: string;
 		link: string | null;
@@ -151,7 +152,7 @@ function createFakeD1() {
 					const [id] = args as [number];
 					return (links.find((l) => l.id === id) ?? null) as T | null;
 				}
-				if (q.startsWith('SELECT id, slug, name, event_date, location, description, details, link, artist_id, created_at FROM events WHERE id')) {
+				if (q.startsWith('SELECT id, slug, name, event_date, location, description, details, link, link_label, artist_id, created_at FROM events WHERE id')) {
 					const [id] = args as [number];
 					return (events.find((e) => e.id === id) ?? null) as T | null;
 				}
@@ -198,7 +199,7 @@ function createFakeD1() {
 						.sort((a, b) => a.sort_order - b.sort_order || a.id - b.id);
 					return { results: filtered as T[], success: true };
 					}
-					if (q.startsWith('SELECT id, slug, name, event_date, location, description, details, link, artist_id, created_at FROM events ORDER BY')) {
+					if (q.startsWith('SELECT id, slug, name, event_date, location, description, details, link, link_label, artist_id, created_at FROM events ORDER BY')) {
 					return { results: events as T[], success: true };
 					}
 					if (
@@ -257,9 +258,10 @@ function createFakeD1() {
 				description: null,
 				details: null,
 				link: null,
+				link_label: null,
 				artist_id: event.artist_id ?? null,
 				created_at: 0
-			});
+				});
 		},
 		_seedImage: (image: {
 			id: number;

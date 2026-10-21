@@ -10,6 +10,7 @@
     | 'eventDate'
     | 'location'
     | 'link'
+    | 'linkLabel'
     | 'file'
     | 'artist';
 
@@ -42,8 +43,9 @@
       eventDate?: string | null;
       location?: string | null;
       link?: string | null;
+      linkLabel?: string | null;
       artistId?: number | null;
-    };
+      };
     id?: number | null;
     requireImage?: boolean;
     imageLabel?: string;
@@ -190,6 +192,18 @@
       type="text"
       value={initial.location ?? ''}
       maxlength="200"
+    />
+  {/if}
+
+  {#if show('linkLabel')}
+    <label for="linkLabel">Link text (optional)</label>
+    <input
+      id="linkLabel"
+      name="linkLabel"
+      type="text"
+      value={initial.linkLabel ?? ''}
+      maxlength="200"
+      placeholder="More info"
     />
   {/if}
 

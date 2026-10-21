@@ -24,10 +24,11 @@
     description: string | null;
     details: string | null;
     link: string | null;
+    link_label: string | null;
     artist_id: number | null;
     artistName: string | null;
     images: EventImage[];
-  }
+    }
 
   interface Artist {
     id: number;

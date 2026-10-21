@@ -26,11 +26,12 @@ export interface EventRow {
 	description: string | null;
 	details: string | null;
 	link: string | null;
+	link_label: string | null;
 	artist_id: number | null;
 	created_at: number;
-}
+	}
 
-export interface EventImageRow {
+	export interface EventImageRow {
 	id: number;
 	event_id: number;
 	r2_key: string;
@@ -184,7 +185,7 @@ export async function deleteExpiredSessions(db: D1Database): Promise<void> {
 export async function listEvents(db: D1Database): Promise<EventRow[]> {
 	const result = await db
 		.prepare(
-			'SELECT id, slug, name, event_date, location, description, details, link, artist_id, created_at FROM events ' +
+			'SELECT id, slug, name, event_date, location, description, details, link, link_label, artist_id, created_at FROM events ' +
 				'ORDER BY (event_date IS NULL), event_date DESC, id DESC'
 		)
 		.all<EventRow>();
@@ -197,9 +198,9 @@ export async function listEvents(db: D1Database): Promise<EventRow[]> {
 export async function getEvent(db: D1Database, id: number): Promise<EventRow | null> {
 	const row = await db
 		.prepare(
-			'SELECT id, slug, name, event_date, location, description, details, link, artist_id, created_at FROM events WHERE id = ?1'
-		)
-		.bind(id)
+			'SELECT id, slug, name, event_date, location, description, details, link, link_label, artist_id, created_at FROM events WHERE id = ?1'
+			)
+			.bind(id)
 		.first<EventRow>();
 		return row ?? null;
 		}
@@ -218,23 +219,25 @@ export async function createEvent(
 		description?: string | null;
 		details?: string | null;
 		link?: string | null;
+		linkLabel?: string | null;
 		artistId?: number | null;
 		}
 		): Promise<EventRow> {
 		const result = await db
 		.prepare(
-			'INSERT INTO events (slug, name, event_date, location, description, details, link, artist_id) ' +
-				'VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8) RETURNING id, slug, name, event_date, location, description, details, link, artist_id, created_at'
+		'INSERT INTO events (slug, name, event_date, location, description, details, link, link_label, artist_id) ' +
+		'VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9) RETURNING id, slug, name, event_date, location, description, details, link, link_label, artist_id, created_at'
 		)
 		.bind(
-			input.slug,
-			input.name,
-			input.eventDate ?? null,
-			input.location ?? null,
-			input.description ?? null,
-			input.details ?? null,
-			input.link ?? null,
-			input.artistId ?? null
+		input.slug,
+		input.name,
+		input.eventDate ?? null,
+		input.location ?? null,
+		input.description ?? null,
+		input.details ?? null,
+		input.link ?? null,
+		input.linkLabel ?? null,
+		input.artistId ?? null
 		)
 		.first<EventRow>();
 	if (!result) throw new Error('Could not create event.');
@@ -256,13 +259,14 @@ export async function updateEvent(
 		description?: string | null;
 		details?: string | null;
 		link?: string | null;
+		linkLabel?: string | null;
 		artistId?: number | null;
 		}
 		): Promise<EventRow | null> {
-	const result = await db
+		const result = await db
 		.prepare(
-			'UPDATE events SET slug = ?1, name = ?2, event_date = ?3, location = ?4, description = ?5, details = ?6, link = ?7, artist_id = ?8 ' +
-				'WHERE id = ?9 RETURNING id, slug, name, event_date, location, description, details, link, artist_id, created_at'
+			'UPDATE events SET slug = ?1, name = ?2, event_date = ?3, location = ?4, description = ?5, details = ?6, link = ?7, link_label = ?8, artist_id = ?9 ' +
+				'WHERE id = ?10 RETURNING id, slug, name, event_date, location, description, details, link, link_label, artist_id, created_at'
 		)
 		.bind(
 			input.slug,
@@ -272,6 +276,7 @@ export async function updateEvent(
 			input.description ?? null,
 			input.details ?? null,
 			input.link ?? null,
+			input.linkLabel ?? null,
 			input.artistId ?? null,
 			id
 			)

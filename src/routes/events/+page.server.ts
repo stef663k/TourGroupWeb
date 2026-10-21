@@ -138,6 +138,7 @@ export const actions: Actions = {
 		const location = String(data.get('location') ?? '').trim();
 		const description = String(data.get('description') ?? '').trim();
 		const link = String(data.get('link') ?? '').trim();
+		const linkLabel = String(data.get('linkLabel') ?? '').trim();
 		const artistIdRaw = String(data.get('artistId') ?? '').trim();
 		const file = data.get('file');
 
@@ -146,6 +147,7 @@ export const actions: Actions = {
 
 		const linkError = validateLink(link);
 		if (linkError) return fail(400, { error: linkError });
+		if (linkLabel.length > 200) return fail(400, { error: 'The link text is too long.' });
 
 		const artistResult = await resolveArtistId(db, artistIdRaw);
 		if ('error' in artistResult) return fail(400, { error: artistResult.error });
@@ -182,8 +184,9 @@ export const actions: Actions = {
 				location: location || null,
 				description: description || null,
 				link: link || null,
+				linkLabel: linkLabel || null,
 				artistId: artistResult.value
-			});
+				});
 		} catch (err) {
 			if (err instanceof Error && err.message.includes('UNIQUE')) {
 				return fail(400, { error: 'An event with the same name already exists.' });
@@ -230,6 +233,7 @@ export const actions: Actions = {
 		const description = String(data.get('description') ?? '').trim();
 		const details = String(data.get('details') ?? '').trim();
 		const link = String(data.get('link') ?? '').trim();
+		const linkLabel = String(data.get('linkLabel') ?? '').trim();
 		const artistIdRaw = String(data.get('artistId') ?? '').trim();
 
 		if (!name) return fail(400, { error: 'Name is required.' });
@@ -237,6 +241,7 @@ export const actions: Actions = {
 
 		const linkError = validateLink(link);
 		if (linkError) return fail(400, { error: linkError });
+		if (linkLabel.length > 200) return fail(400, { error: 'The link text is too long.' });
 
 		if (eventDate && !/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
 			return fail(400, { error: 'Date must be in the format YYYY-MM-DD.' });
@@ -303,8 +308,9 @@ export const actions: Actions = {
 				description: description || null,
 				details: details || null,
 				link: link || null,
+				linkLabel: linkLabel || null,
 				artistId: artistResult.value
-			});
+				});
 		} catch (err) {
 			if (err instanceof Error && err.message.includes('UNIQUE')) {
 				return fail(400, { error: 'An event with the same name already exists.' });

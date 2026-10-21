@@ -15,9 +15,10 @@ function createFakeD1() {
 		description: string | null;
 		details: string | null;
 		link: string | null;
+		link_label: string | null;
 		artist_id: number | null;
 		created_at: number;
-	}[] = [];
+		}[] = [];
 	const artists: {
 		id: number;
 		name: string;
@@ -49,7 +50,7 @@ function createFakeD1() {
 				return statement;
 			},
 			async all<T>() {
-				if (q.startsWith('SELECT id, slug, name, event_date, location, description, details, link, artist_id, created_at FROM events ORDER BY')) {
+				if (q.startsWith('SELECT id, slug, name, event_date, location, description, details, link, link_label, artist_id, created_at FROM events ORDER BY')) {
 					return { results: events as T[], success: true };
 				}
 				if (
@@ -91,7 +92,7 @@ function createFakeD1() {
 				throw new Error(`Unsupported SQL: ${q}`);
 			},
 			async first<T>() {
-				if (q.startsWith('SELECT id, slug, name, event_date, location, description, details, link, artist_id, created_at FROM events WHERE id')) {
+				if (q.startsWith('SELECT id, slug, name, event_date, location, description, details, link, link_label, artist_id, created_at FROM events WHERE id')) {
 					const [id] = args as [number];
 					return (events.find((e) => e.id === id) ?? null) as T | null;
 				}
@@ -116,9 +117,10 @@ function createFakeD1() {
 					return row as T;
 				}
 				if (q.startsWith('UPDATE events SET')) {
-					const [slug, name, event_date, location, description, details, link, artist_id, id] = args as [
+					const [slug, name, event_date, location, description, details, link, link_label, artist_id, id] = args as [
 						string,
 						string,
+						string | null,
 						string | null,
 						string | null,
 						string | null,
@@ -139,13 +141,15 @@ function createFakeD1() {
 					row.description = description;
 					row.details = details;
 					row.link = link;
+					row.link_label = link_label;
 					row.artist_id = artist_id;
 					return row as T;
 				}
 				if (q.startsWith('INSERT INTO events')) {
-					const [slug, name, event_date, location, description, details, link, artist_id] = args as [
+					const [slug, name, event_date, location, description, details, link, link_label, artist_id] = args as [
 						string,
 						string,
+						string | null,
 						string | null,
 						string | null,
 						string | null,
@@ -165,6 +169,7 @@ function createFakeD1() {
 						description,
 						details,
 						link,
+						link_label,
 						artist_id,
 						created_at: 0
 					};
@@ -205,10 +210,10 @@ function createFakeD1() {
 		_images: images,
 		_artists: artists,
 		_seed: (
-			rows: Omit<(typeof events)[number], 'artist_id'>[],
+			rows: Omit<(typeof events)[number], 'artist_id' | 'link_label'>[],
 			imageRows: Omit<(typeof images)[number], 'is_cover'>[]
 		) => {
-			events.push(...rows.map((r) => ({ ...r, artist_id: null })));
+			events.push(...rows.map((r) => ({ ...r, artist_id: null, link_label: null })));
 			images.push(...imageRows.map((r) => ({ ...r, is_cover: 0 })));
 		},
 		_seedArtist: (row: { id: number; name: string }) => {
@@ -323,6 +328,7 @@ async function runAddEventImage(
 type LoadResult = {
 	events: {
 		link: string | null;
+		link_label: string | null;
 		artist_id: number | null;
 		artistName: string | null;
 		images: { id: number; caption: string | null; url: string; isCover: boolean }[];
@@ -418,6 +424,7 @@ describe('events load', () => {
 		const data = await runLoad(makePlatform(db, 'https://cdn.example.com'));
 		expect(data.events).toHaveLength(1);
 		expect(data.events[0].link).toBe('https://example.com/billetter');
+		expect(data.events[0].link_label).toBeNull();
 		expect(data.events[0].images).toEqual([
 			{
 				id: 10,
@@ -427,6 +434,30 @@ describe('events load', () => {
 			}
 		]);
 		expect(data.imageBaseUrl).toBe('https://cdn.example.com');
+	});
+
+	it('videresender eventets link-tekst til load-svaret', async () => {
+		const db = createFakeD1();
+		db._seed(
+			[
+				{
+					id: 1,
+					slug: 'sommerfest',
+					name: 'Sommerfest',
+					event_date: null,
+					location: null,
+					description: null,
+					details: null,
+					link: 'https://example.com/billetter',
+					created_at: 0
+				}
+			],
+			[]
+		);
+		db._events[0].link_label = 'Billetter';
+
+		const data = await runLoad(makePlatform(db));
+		expect(data.events[0].link_label).toBe('Billetter');
 	});
 
 	it('bruger /images-ruten når ingen base-URL er sat', async () => {
@@ -630,9 +661,41 @@ describe('createEvent action', () => {
 		const res = await runCreateEvent(form, platform);
 		expect(res.success).toBe(true);
 		expect(db._events[0].link).toBe('https://example.com/billetter');
-	});
+		});
 
-	it('afviser et ugyldigt link', async () => {
+		it('gemmer en link-tekst sammen med linket', async () => {
+		const db = createFakeD1();
+		const bucket = createFakeBucket();
+		const platform = { env: { DB: db, Bucket: bucket } } as unknown as App.Platform;
+
+		const form = new FormData();
+		form.set('name', 'Sommerfest');
+		form.set('link', 'https://example.com/billetter');
+		form.set('linkLabel', 'Billetter');
+		form.set('file', jpegFile());
+
+		const res = await runCreateEvent(form, platform);
+		expect(res.success).toBe(true);
+		expect(db._events[0].link_label).toBe('Billetter');
+		});
+
+		it('afviser en for lang link-tekst', async () => {
+		const db = createFakeD1();
+		const bucket = createFakeBucket();
+		const platform = { env: { DB: db, Bucket: bucket } } as unknown as App.Platform;
+
+		const form = new FormData();
+		form.set('name', 'Sommerfest');
+		form.set('link', 'https://example.com/billetter');
+		form.set('linkLabel', 'x'.repeat(201));
+		form.set('file', jpegFile());
+
+		const res = await runCreateEvent(form, platform);
+		expect(res.status).toBe(400);
+		expect(bucket._puts).not.toHaveBeenCalled();
+		});
+
+		it('afviser et ugyldigt link', async () => {
 		const db = createFakeD1();
 		const bucket = createFakeBucket();
 		const platform = { env: { DB: db, Bucket: bucket } } as unknown as App.Platform;
@@ -920,9 +983,31 @@ describe('createEvent action', () => {
 		const res2 = await runUpdateEvent(cleared, makePlatform(db));
 		expect(res2.success).toBe(true);
 		expect(db._events[0].link).toBeNull();
-	});
+		});
 
-	it('afviser et ugyldigt link', async () => {
+		it('opdaterer og rydder eventets link-tekst', async () => {
+		const db = createFakeD1();
+		seed(db);
+
+		const withLabel = new FormData();
+		withLabel.set('id', '1');
+		withLabel.set('name', 'Sommerfest');
+		withLabel.set('link', 'https://example.com/ny');
+		withLabel.set('linkLabel', 'Læs mere');
+		const res = await runUpdateEvent(withLabel, makePlatform(db));
+		expect(res.success).toBe(true);
+		expect(db._events[0].link_label).toBe('Læs mere');
+
+		const cleared = new FormData();
+		cleared.set('id', '1');
+		cleared.set('name', 'Sommerfest');
+		cleared.set('linkLabel', '');
+		const res2 = await runUpdateEvent(cleared, makePlatform(db));
+		expect(res2.success).toBe(true);
+		expect(db._events[0].link_label).toBeNull();
+		});
+
+		it('afviser et ugyldigt link', async () => {
 		const db = createFakeD1();
 		seed(db);
 		const form = new FormData();

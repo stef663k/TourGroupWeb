@@ -17,10 +17,11 @@
     description: string | null;
     details: string | null;
     link: string | null;
+    link_label: string | null;
     artist_id: number | null;
     artistName: string | null;
     images: EventImage[];
-  }
+    }
 
   type ArtistOption = { id: number; name: string };
 
@@ -51,6 +52,8 @@
   let artistId = $state(event.artist_id ? String(event.artist_id) : '');
   // svelte-ignore state_referenced_locally
   let link = $state(event.link ?? '');
+  // svelte-ignore state_referenced_locally
+  let linkLabel = $state(event.link_label ?? '');
 
   // Modalen viser de uploadede billeder (alt undtagen cover-billedet, som
   // vises på eventkortet). Det gælder for alle — også ikke-ownere.
@@ -68,21 +71,26 @@
   let syncedArtistId = event.artist_id;
   // svelte-ignore state_referenced_locally
   let syncedLink = event.link ?? '';
+  // svelte-ignore state_referenced_locally
+  let syncedLinkLabel = event.link_label ?? '';
   $effect(() => {
     if (
       event.name !== syncedName ||
       (event.details ?? '') !== syncedDetails ||
       event.artist_id !== syncedArtistId ||
-      (event.link ?? '') !== syncedLink
+      (event.link ?? '') !== syncedLink ||
+      (event.link_label ?? '') !== syncedLinkLabel
     ) {
       syncedName = event.name;
       syncedDetails = event.details ?? '';
       syncedArtistId = event.artist_id;
       syncedLink = event.link ?? '';
+      syncedLinkLabel = event.link_label ?? '';
       name = event.name;
       details = event.details ?? '';
       artistId = event.artist_id ? String(event.artist_id) : '';
       link = event.link ?? '';
+      linkLabel = event.link_label ?? '';
     }
   });
 
@@ -279,6 +287,16 @@
             {/each}
           </select>
 
+          <label for="modal-link-label">Link text (optional)</label>
+          <input
+            id="modal-link-label"
+            name="linkLabel"
+            type="text"
+            bind:value={linkLabel}
+            maxlength="200"
+            placeholder="More info"
+          />
+
           <label for="modal-link">Link (optional)</label>
           <input
             id="modal-link"
@@ -308,7 +326,9 @@
       {#if event.link}
         <p class="link-row">
           <span class="link-label">Link</span>
-          <a href={event.link} target="_blank" rel="noopener noreferrer">{event.link}</a>
+          <a href={event.link} target="_blank" rel="noopener noreferrer">
+            {event.link_label || event.link}
+          </a>
         </p>
       {/if}
 

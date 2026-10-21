@@ -44,7 +44,7 @@
     <EventForm
       error={form?.error}
       artists={data.artists}
-      fields={['name', 'description', 'eventDate', 'location', 'artist', 'link', 'file']}
+      fields={['name', 'description', 'eventDate', 'location', 'artist', 'linkLabel', 'link', 'file']}
     />
   </section>
 {/if}
