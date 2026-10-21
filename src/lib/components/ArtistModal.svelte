@@ -2,6 +2,7 @@
   import { enhance } from '$app/forms';
   import EventCard from './EventCard.svelte';
   import EventModal from './EventModal.svelte';
+  import FaviconLink from './FaviconLink.svelte';
 
   interface ArtistLink {
     id: number;
@@ -242,7 +243,7 @@
           <ul class="links">
             {#each artist.links as link (link.id)}
               <li>
-                <a href={link.url} target="_blank" rel="noopener noreferrer">{link.label}</a>
+                <FaviconLink class="artist-link" href={link.url} label={link.label} />
                 {#if owner}
                   <form
                     method="POST"
@@ -492,14 +493,14 @@
     border-radius: 0.375rem;
   }
 
-  .links a {
+  .links :global(.artist-link) {
     min-width: 0;
     overflow-wrap: anywhere;
     border-bottom: none;
   }
 
-  .links a:hover,
-  .links a:focus-visible {
+  .links :global(.artist-link:hover),
+  .links :global(.artist-link:focus-visible) {
     color: var(--accent);
   }
 

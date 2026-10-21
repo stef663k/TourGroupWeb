@@ -1,6 +1,7 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { compressImage } from '$lib/image';
+  import FaviconLink from './FaviconLink.svelte';
 
   interface EventImage {
     id: number;
@@ -326,9 +327,7 @@
       {#if event.link}
         <p class="link-row">
           <span class="link-label">Link</span>
-          <a href={event.link} target="_blank" rel="noopener noreferrer">
-            {event.link_label || event.link}
-          </a>
+          <FaviconLink class="event-link" href={event.link} label={event.link_label || event.link} />
         </p>
       {/if}
 
@@ -610,7 +609,7 @@
     color: var(--fg-muted);
   }
 
-  .link-row a {
+  .link-row :global(.event-link) {
     color: var(--fg);
     font-size: 0.9375rem;
     overflow-wrap: anywhere;
