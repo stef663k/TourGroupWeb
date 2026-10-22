@@ -224,10 +224,10 @@ section {
 
 /* --- Sektionslabel (01 — Artists) ----- */
 .label {
-  font-size: clamp(0.6875rem, 2vw, 0.75rem);
+  font-size: clamp(1rem, 3vw, 1rem);
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: var(--fg-muted);
+  color: white;
   margin-bottom: clamp(1.25rem, 4vw, 3rem);
 }
 
