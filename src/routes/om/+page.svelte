@@ -178,9 +178,9 @@
   }
 
   .edit-form label {
-    font-size: 0.8125rem;
+    font-size: 1rem;
     letter-spacing: 0.02em;
-    color: var(--fg-muted);
+    color: white;
   }
 
   .edit-form textarea {
