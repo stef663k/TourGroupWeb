@@ -41,6 +41,7 @@
 	<ul id="primary-menu" class:open={menuOpen}>
 		<li><a href="/" onclick={closeMenu}>Home</a></li>
 		<li><a href="/events" onclick={closeMenu}>Events</a></li>
+		<li><a href="/artists" onclick={closeMenu}>Artists</a></li>
 		<li><a href="/om" onclick={closeMenu}>About</a></li>
 		<li><a href="/kontakt" onclick={closeMenu}>Contact</a></li>
 		{#if data.owner}
