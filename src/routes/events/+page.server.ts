@@ -419,7 +419,9 @@ export const actions: Actions = {
 					eventId: id,
 					r2Key: key,
 					caption: caption || null,
-					alt: alt || null,
+					// Alt-teksten udfyldes automatisk fra billedteksten når den
+					// ikke er angivet særskilt, så alt ikke står tomt.
+					alt: alt || caption || null,
 					contentType
 				});
 			}

@@ -1226,6 +1226,41 @@ describe('createEvent action', () => {
 		expect(db._images[0].is_cover).toBe(0);
 		});
 
+		it('udfylder alt-teksten automatisk fra billedteksten når alt er tom', async () => {
+		const db = createFakeD1();
+		seed(db);
+		const bucket = createFakeBucket();
+		const platform = { env: { DB: db, Bucket: bucket } } as unknown as App.Platform;
+
+		const form = new FormData();
+		form.set('id', '1');
+		form.set('caption', 'Bandet på scenen');
+		form.set('file', jpegFile());
+		const res = await runAddEventImage(form, platform);
+
+		expect(res.success).toBe(true);
+		expect(db._images[0].caption).toBe('Bandet på scenen');
+		expect(db._images[0].alt).toBe('Bandet på scenen');
+		});
+
+		it('foretrækker en eksplicit alt-tekst frem for billedteksten', async () => {
+		const db = createFakeD1();
+		seed(db);
+		const bucket = createFakeBucket();
+		const platform = { env: { DB: db, Bucket: bucket } } as unknown as App.Platform;
+
+		const form = new FormData();
+		form.set('id', '1');
+		form.set('caption', 'Billedtekst');
+		form.set('alt', 'En særskilt beskrivelse');
+		form.set('file', jpegFile());
+		const res = await runAddEventImage(form, platform);
+
+		expect(res.success).toBe(true);
+		expect(db._images[0].caption).toBe('Billedtekst');
+		expect(db._images[0].alt).toBe('En særskilt beskrivelse');
+		});
+
 		it('gemmer flere billeder i samme upload', async () => {
 		const db = createFakeD1();
 		seed(db);
