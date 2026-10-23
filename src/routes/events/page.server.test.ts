@@ -110,13 +110,6 @@ function createFakeD1() {
 					const [id] = args as [number];
 					return (images.find((i) => i.id === id) ?? null) as T | null;
 				}
-				if (q.startsWith('UPDATE event_images SET alt')) {
-					const [alt, id] = args as [string | null, number];
-					const row = images.find((i) => i.id === id);
-					if (!row) return null;
-					row.alt = alt;
-					return row as T;
-				}
 				if (q.startsWith('UPDATE event_images SET')) {
 					const [r2_key, content_type, id] = args as [string, string, number];
 					const row = images.find((i) => i.id === id);
@@ -337,24 +330,7 @@ async function runAddEventImage(
 	return result as unknown as ActionResult;
 	}
 
-	async function runUpdateEventImageAlt(
-	form: FormData,
-	platform: unknown,
-	owner = true
-	): Promise<ActionResult> {
-	const action = actions.updateEventImageAlt;
-	const result = await action({
-		request: new Request('http://localhost/events?/updateEventImageAlt', {
-			method: 'POST',
-			body: form
-		}),
-		platform,
-		locals: { owner }
-	} as never);
-	return result as unknown as ActionResult;
-	}
-
-type LoadResult = {
+	type LoadResult = {
 	events: {
 		link: string | null;
 		link_label: string | null;
@@ -1243,24 +1219,6 @@ describe('createEvent action', () => {
 		expect(db._images[0].alt).toBe('Bandet på scenen');
 		});
 
-		it('foretrækker en eksplicit alt-tekst frem for billedteksten', async () => {
-		const db = createFakeD1();
-		seed(db);
-		const bucket = createFakeBucket();
-		const platform = { env: { DB: db, Bucket: bucket } } as unknown as App.Platform;
-
-		const form = new FormData();
-		form.set('id', '1');
-		form.set('caption', 'Billedtekst');
-		form.set('alt', 'En særskilt beskrivelse');
-		form.set('file', jpegFile());
-		const res = await runAddEventImage(form, platform);
-
-		expect(res.success).toBe(true);
-		expect(db._images[0].caption).toBe('Billedtekst');
-		expect(db._images[0].alt).toBe('En særskilt beskrivelse');
-		});
-
 		it('gemmer flere billeder i samme upload', async () => {
 		const db = createFakeD1();
 		seed(db);
@@ -1517,102 +1475,5 @@ describe('createEvent action', () => {
 		form.set('id', '10');
 		const res = await runRemoveEventImage(form, makePlatform(undefined));
 		expect(res.status).toBe(500);
-	});
-	});
-
-	describe('updateEventImageAlt action', () => {
-	let errorSpy: ReturnType<typeof vi.spyOn>;
-
-	beforeEach(() => {
-		errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-	});
-
-	afterEach(() => {
-		errorSpy.mockRestore();
-	});
-
-	function seed(db: ReturnType<typeof createFakeD1>) {
-		db._seed(
-			[
-				{
-					id: 1,
-					slug: 'sommerfest',
-					name: 'Sommerfest',
-					event_date: null,
-					location: null,
-					description: null,
-					details: null,
-					link: null,
-					created_at: 0
-				}
-			],
-			[
-				{
-					id: 10,
-					event_id: 1,
-					r2_key: 'events/sommerfest/a.jpg',
-					caption: null,
-					content_type: 'image/jpeg',
-					sort_order: 0,
-					created_at: 0
-				}
-			]
-		);
-	}
-
-	it('afviser en ikke-owner', async () => {
-		const form = new FormData();
-		form.set('id', '10');
-		form.set('alt', 'Scene');
-		const res = await runUpdateEventImageAlt(form, makePlatform(createFakeD1()), false);
-		expect(res.status).toBe(403);
-	});
-
-	it('afviser et ugyldigt id', async () => {
-		const form = new FormData();
-		form.set('id', 'abc');
-		const res = await runUpdateEventImageAlt(form, makePlatform(createFakeD1()));
-		expect(res.status).toBe(400);
-	});
-
-	it('returnerer 404 for et billede der ikke findes', async () => {
-		const form = new FormData();
-		form.set('id', '999');
-		form.set('alt', 'Scene');
-		const res = await runUpdateEventImageAlt(form, makePlatform(createFakeD1()));
-		expect(res.status).toBe(404);
-	});
-
-	it('gemmer alt-teksten retroaktivt på et eksisterende billede', async () => {
-		const db = createFakeD1();
-		seed(db);
-		const form = new FormData();
-		form.set('id', '10');
-		form.set('alt', 'Bandet på scenen');
-		const res = await runUpdateEventImageAlt(form, makePlatform(db));
-		expect(res.success).toBe(true);
-		expect(db._images[0].alt).toBe('Bandet på scenen');
-	});
-
-	it('rydder alt-teksten når feltet er tomt', async () => {
-		const db = createFakeD1();
-		seed(db);
-		db._images[0].alt = 'Gammel tekst';
-		const form = new FormData();
-		form.set('id', '10');
-		form.set('alt', '');
-		const res = await runUpdateEventImageAlt(form, makePlatform(db));
-		expect(res.success).toBe(true);
-		expect(db._images[0].alt).toBeNull();
-	});
-
-	it('afviser en for lang alt-tekst', async () => {
-		const db = createFakeD1();
-		seed(db);
-		const form = new FormData();
-		form.set('id', '10');
-		form.set('alt', 'x'.repeat(251));
-		const res = await runUpdateEventImageAlt(form, makePlatform(db));
-		expect(res.status).toBe(400);
 	});
 	});

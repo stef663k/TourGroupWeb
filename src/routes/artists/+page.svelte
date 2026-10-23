@@ -207,17 +207,6 @@
                   Delete current picture
                 </label>
               </div>
-              <label for="edit-alt-{work.id}">Alt text</label>
-              <input
-                id="edit-alt-{work.id}"
-                name="imageAlt"
-                type="text"
-                maxlength="250"
-                value={work.imageAlt ?? ''}
-                placeholder="Describe the picture for screen readers"
-              />
-              {:else}
-              <input type="hidden" name="imageAlt" value="" />
               {/if}
               <input
               id="edit-photo-{work.id}"
@@ -300,7 +289,7 @@
     <div class="label">Create artist</div>
     <EventForm
       action="?/createArtist"
-      fields={['name', 'years', 'file', 'imageAlt']}
+      fields={['name', 'years', 'file']}
       submitLabel="Add"
       pendingLabel="Adding…"
       requireImage={false}

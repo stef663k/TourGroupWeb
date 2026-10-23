@@ -8,7 +8,6 @@ import {
 	updateArtist,
 	updateArtistDetails,
 	updateArtistImage,
-	updateArtistImageAlt,
 	listArtistLinks,
 	getArtistLink,
 	addArtistLink,
@@ -101,13 +100,6 @@ function createFakeD1(): FakeD1 {
 				const row = rows.find((r) => r.id === id);
 				if (!row) return null;
 				row.details = details;
-				return row as T;
-			}
-			if (q.startsWith('UPDATE artists SET image_alt')) {
-				const [alt, id] = args as [string | null, number];
-				const row = rows.find((r) => r.id === id);
-				if (!row) return null;
-				row.image_alt = alt;
 				return row as T;
 			}
 			if (q.startsWith('UPDATE artists SET image_key = ?1, image_content_type = ?2')) {
@@ -422,36 +414,16 @@ describe('artists', () => {
 
 	it('bevarer alt-teksten når billedet udskiftes uden ny alt', async () => {
 		const created = await createArtist(db, { name: 'Faustix' });
-		await updateArtistImageAlt(db, created.id, 'Portræt');
+		await updateArtistImage(db, created.id, {
+			r2Key: 'artist/faustix/abc.jpg',
+			contentType: 'image/jpeg',
+			alt: 'Portræt'
+		});
 		const updated = await updateArtistImage(db, created.id, {
 			r2Key: 'artist/faustix/nyt.jpg',
 			contentType: 'image/jpeg'
 		});
 		expect(updated?.image_alt).toBe('Portræt');
-	});
-
-	it('opdaterer alt-teksten retroaktivt på et profilbillede', async () => {
-		const created = await createArtist(db, { name: 'Faustix' });
-		await updateArtistImage(db, created.id, {
-			r2Key: 'artist/faustix/abc.jpg',
-			contentType: 'image/jpeg'
-		});
-		const updated = await updateArtistImageAlt(db, created.id, 'Live på scenen');
-		expect(updated?.image_alt).toBe('Live på scenen');
-
-		const fetched = await getArtist(db, created.id);
-		expect(fetched?.image_alt).toBe('Live på scenen');
-	});
-
-	it('rydder alt-teksten når der sendes null', async () => {
-		const created = await createArtist(db, { name: 'Faustix' });
-		await updateArtistImageAlt(db, created.id, 'Midlertidig');
-		const cleared = await updateArtistImageAlt(db, created.id, null);
-		expect(cleared?.image_alt).toBeNull();
-	});
-
-	it('returnerer null når alt-teksten opdateres på en ukendt række', async () => {
-		expect(await updateArtistImageAlt(db, 999, 'tekst')).toBeNull();
 	});
 
 	it('lister profilbillede med listen af artister', async () => {

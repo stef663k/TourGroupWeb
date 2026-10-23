@@ -8,8 +8,7 @@ import {
 	addEventImage,
 	listEventImages,
 	getEventImage,
-	removeEventImage,
-	updateEventImageAlt
+	removeEventImage
 	} from '$lib/server/db';
 
 /**
@@ -118,13 +117,6 @@ function createFakeD1(): D1Database {
 					created_at: Math.floor(Date.now() / 1000)
 				};
 				images.push(row);
-				return row as T;
-			}
-			if (q.startsWith('UPDATE event_images SET alt = ?1')) {
-				const [alt, id] = args as [string | null, number];
-				const row = images.find((i) => i.id === id);
-				if (!row) return null;
-				row.alt = alt;
 				return row as T;
 			}
 			if (q.startsWith('UPDATE events SET')) {
@@ -472,35 +464,6 @@ describe('event-billeder', () => {
 		expect(images[0].alt).toBe('Bandet på scenen');
 	});
 
-	it('opdaterer alt-teksten retroaktivt på et eksisterende billede', async () => {
-		const img = await addEventImage(db, {
-			eventId,
-			r2Key: 'events/fest/retro.jpg',
-			contentType: 'image/jpeg'
-		});
-		expect(img.alt).toBeNull();
-
-		const updated = await updateEventImageAlt(db, img.id, 'Publikum foran scenen');
-		expect(updated?.alt).toBe('Publikum foran scenen');
-
-		const fetched = await getEventImage(db, img.id);
-		expect(fetched?.alt).toBe('Publikum foran scenen');
-	});
-
-	it('rydder alt-teksten når der sendes null', async () => {
-		const img = await addEventImage(db, {
-			eventId,
-			r2Key: 'events/fest/clear.jpg',
-			contentType: 'image/jpeg',
-			alt: 'Midlertidig'
-		});
-		const cleared = await updateEventImageAlt(db, img.id, null);
-		expect(cleared?.alt).toBeNull();
-	});
-
-	it('returnerer null når alt-teksten opdateres på et ukendt billede', async () => {
-		expect(await updateEventImageAlt(db, 999, 'tekst')).toBeNull();
-	});
 
 	it('fjerner et billede og returnerer rækken', async () => {
 		const img = await addEventImage(db, {

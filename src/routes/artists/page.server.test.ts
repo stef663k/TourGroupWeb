@@ -106,13 +106,6 @@ function createFakeD1() {
 					rows.push(row);
 					return row as T;
 				}
-				if (q.startsWith('UPDATE artists SET image_alt')) {
-					const [alt, id] = args as [string | null, number];
-					const row = rows.find((r) => r.id === id);
-					if (!row) return null;
-					row.image_alt = alt;
-					return row as T;
-				}
 				if (q.startsWith('UPDATE artists SET image_key = ?1, image_content_type = ?2')) {
 					const [imageKey, imageContentType, alt, id] = args as [
 						string | null,
@@ -285,23 +278,6 @@ async function runUpdateArtist(form: FormData, platform: unknown, owner = true):
 	const action = actions.updateArtist;
 	const result = await action({
 		request: new Request('http://localhost/artists?/updateArtist', { method: 'POST', body: form }),
-		platform,
-		locals: { owner }
-	} as never);
-	return result as unknown as ActionResult;
-}
-
-async function runUpdateArtistImageAlt(
-	form: FormData,
-	platform: unknown,
-	owner = true
-): Promise<ActionResult> {
-	const action = actions.updateArtistImageAlt;
-	const result = await action({
-		request: new Request('http://localhost/artists?/updateArtistImageAlt', {
-			method: 'POST',
-			body: form
-		}),
 		platform,
 		locals: { owner }
 	} as never);
@@ -1105,81 +1081,5 @@ describe('artists load', () => {
 
 		const data = await runLoad(makePlatform(db));
 		expect(data.artists.map((artist) => artist.name)).toEqual(['C', 'A', 'B']);
-		});
-		});
-
-		describe('updateArtistImageAlt action', () => {
-		let errorSpy: ReturnType<typeof vi.spyOn>;
-
-		beforeEach(() => {
-		errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		});
-
-		afterEach(() => {
-		errorSpy.mockRestore();
-		});
-
-		async function seedArtist(db: ReturnType<typeof createFakeD1>) {
-		const create = new FormData();
-		create.set('name', 'Faustix');
-		await runCreateArtist(create, makePlatform(db));
-		return db._rows[0].id;
-		}
-
-		it('afviser en ikke-owner', async () => {
-		const form = new FormData();
-		form.set('id', '1');
-		form.set('alt', 'Portræt');
-		const res = await runUpdateArtistImageAlt(form, makePlatform(createFakeD1()), false);
-		expect(res.status).toBe(403);
-		});
-
-		it('afviser et ugyldigt id', async () => {
-		const form = new FormData();
-		form.set('id', 'abc');
-		form.set('alt', 'Portræt');
-		const res = await runUpdateArtistImageAlt(form, makePlatform(createFakeD1()));
-		expect(res.status).toBe(400);
-		});
-
-		it('returnerer 404 for en post der ikke findes', async () => {
-		const form = new FormData();
-		form.set('id', '999');
-		form.set('alt', 'Portræt');
-		const res = await runUpdateArtistImageAlt(form, makePlatform(createFakeD1()));
-		expect(res.status).toBe(404);
-		});
-
-		it('gemmer alt-teksten retroaktivt', async () => {
-		const db = createFakeD1();
-		const id = await seedArtist(db);
-		const form = new FormData();
-		form.set('id', String(id));
-		form.set('alt', 'Portræt af Faustix');
-		const res = await runUpdateArtistImageAlt(form, makePlatform(db));
-		expect(res.success).toBe(true);
-		expect(db._rows[0].image_alt).toBe('Portræt af Faustix');
-		});
-
-		it('rydder alt-teksten når feltet er tomt', async () => {
-		const db = createFakeD1();
-		const id = await seedArtist(db);
-		db._rows[0].image_alt = 'Gammel tekst';
-		const form = new FormData();
-		form.set('id', String(id));
-		form.set('alt', '');
-		const res = await runUpdateArtistImageAlt(form, makePlatform(db));
-		expect(res.success).toBe(true);
-		expect(db._rows[0].image_alt).toBeNull();
-		});
-
-		it('afviser en for lang alt-tekst', async () => {
-		const db = createFakeD1();
-		const id = await seedArtist(db);
-		const form = new FormData();
-		form.set('id', String(id));
-		form.set('alt', 'x'.repeat(251));
-		const res = await runUpdateArtistImageAlt(form, makePlatform(db));
-		expect(res.status).toBe(400);
 		});
 		});

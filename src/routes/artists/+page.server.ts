@@ -9,7 +9,6 @@ import {
 	updateArtist,
 	updateArtistDetails,
 	updateArtistImage,
-	updateArtistImageAlt,
 	deleteArtist,
 	listArtistLinks,
 	getArtistLink,
@@ -158,13 +157,11 @@ export const actions: Actions = {
 		const data = await request.formData();
 		const name = String(data.get('name') ?? '').trim();
 		const years = String(data.get('years') ?? '').trim();
-		const imageAlt = String(data.get('imageAlt') ?? '').trim();
 		const file = data.get('file');
 
 		if (!name) return fail(400, { error: 'Name is required.' });
 		if (name.length > 200) return fail(400, { error: 'The name is too long.' });
 		if (years.length > 50) return fail(400, { error: 'The year is too long.' });
-		if (imageAlt.length > 250) return fail(400, { error: 'The alt text is too long.' });
 
 		// Valgfrit profilbillede. Er der valgt en fil, valideres den her, så
 		// vi ikke opretter artisten og derefter fejler på et ugyldigt billede.
@@ -204,7 +201,7 @@ export const actions: Actions = {
 				await updateArtistImage(db, created.id, {
 					r2Key: key,
 					contentType: imageValidation.contentType,
-					alt: imageAlt || name
+					alt: name
 				});
 			} catch (err) {
 				console.error('Kunne ikke uploade artist-billede:', err);
@@ -229,14 +226,12 @@ export const actions: Actions = {
 
 		const name = String(data.get('name') ?? '').trim();
 		const years = String(data.get('years') ?? '').trim();
-		const imageAlt = String(data.get('imageAlt') ?? '').trim();
 		const removeImage = String(data.get('removeImage') ?? '') === '1';
 		const file = data.get('file');
 
 		if (!name) return fail(400, { error: 'Name is required.' });
 		if (name.length > 200) return fail(400, { error: 'The name is too long.' });
 		if (years.length > 50) return fail(400, { error: 'The year is too long.' });
-		if (imageAlt.length > 250) return fail(400, { error: 'The alt text is too long.' });
 
 		const existing = await getArtist(db, id);
 		if (!existing) return fail(404, { error: 'The entry does not exist.' });
@@ -279,7 +274,7 @@ export const actions: Actions = {
 				await updateArtistImage(db, id, {
 					r2Key: key,
 					contentType: imageValidation.contentType,
-					alt: imageAlt || name
+					alt: name
 				});
 			} catch (err) {
 				console.error('Kunne ikke uploade artist-billede:', err);
@@ -310,35 +305,9 @@ export const actions: Actions = {
 		}
 
 		return { success: true };
-	},
+		},
 
-	updateArtistImageAlt: async ({ request, platform, locals }) => {
-		if (!locals.owner) return fail(403, { error: 'Not authorized.' });
-
-		const db = platform?.env?.DB;
-		if (!db) return fail(500, { error: 'The database is not configured.' });
-
-		const data = await request.formData();
-		const id = Number(String(data.get('id') ?? '').trim());
-		if (!Number.isInteger(id)) return fail(400, { error: 'Invalid entry.' });
-
-		const alt = String(data.get('alt') ?? '').trim();
-		if (alt.length > 250) return fail(400, { error: 'The alt text is too long.' });
-
-		const existing = await getArtist(db, id);
-		if (!existing) return fail(404, { error: 'The entry does not exist.' });
-
-		try {
-			await updateArtistImageAlt(db, id, alt || null);
-		} catch (err) {
-			console.error('Kunne ikke opdatere alt-tekst:', err);
-			return fail(500, { error: 'Could not save the alt text. Please try again later.' });
-		}
-
-		return { success: true };
-	},
-
-	updateArtistDetails: async ({ request, platform, locals }) => {
+		updateArtistDetails: async ({ request, platform, locals }) => {
 		if (!locals.owner) return fail(403, { error: 'Not authorized.' });
 
 		const db = platform?.env?.DB;

@@ -406,25 +406,6 @@ export async function updateArtistImage(
 }
 
 /**
- * Opdaterer alt-teksten på en artists profilbillede og returnerer rækken.
- * Returnerer null hvis rækken ikke findes. Send null for at rydde alt-teksten.
- */
-export async function updateArtistImageAlt(
-	db: D1Database,
-	id: number,
-	alt: string | null
-): Promise<ArtistRow | null> {
-	const result = await db
-		.prepare(
-			'UPDATE artists SET image_alt = ?1 ' +
-				'WHERE id = ?2 RETURNING id, name, years, details, image_key, image_content_type, image_alt, sort_order, created_at'
-		)
-		.bind(alt, id)
-		.first<ArtistRow>();
-	return result ?? null;
-}
-
-/**
  * Sletter en artist-række. Tilhørende links fjernes via ON DELETE CASCADE.
  */
 export async function deleteArtist(db: D1Database, id: number): Promise<void> {
@@ -605,25 +586,6 @@ export async function updateEventImage(
 				'RETURNING id, event_id, r2_key, caption, alt, content_type, sort_order, is_cover, created_at'
 		)
 		.bind(input.r2Key, input.contentType, id)
-		.first<EventImageRow>();
-	return result ?? null;
-}
-
-/**
- * Opdaterer alt-teksten på et billede og returnerer rækken.
- * Returnerer null hvis billedet ikke findes. Send null for at rydde alt-teksten.
- */
-export async function updateEventImageAlt(
-	db: D1Database,
-	id: number,
-	alt: string | null
-): Promise<EventImageRow | null> {
-	const result = await db
-		.prepare(
-			'UPDATE event_images SET alt = ?1 WHERE id = ?2 ' +
-				'RETURNING id, event_id, r2_key, caption, alt, content_type, sort_order, is_cover, created_at'
-		)
-		.bind(alt, id)
 		.first<EventImageRow>();
 	return result ?? null;
 }
