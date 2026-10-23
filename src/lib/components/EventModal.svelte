@@ -2,6 +2,7 @@
   import { enhance } from '$app/forms';
   import { compressImage } from '$lib/image';
   import FaviconLink from './FaviconLink.svelte';
+  import { isUpcoming, stripUpcoming } from '$lib/upcoming';
 
   interface EventImage {
     id: number;
@@ -60,6 +61,10 @@
   // Modalen viser de uploadede billeder (alt undtagen cover-billedet, som
   // vises på eventkortet). Det gælder for alle — også ikke-ownere.
   let photos = $derived(event.images.filter((image) => !image.isCover));
+
+  // Markér automatisk kommende events ud fra datoen, ligesom på eventkortet.
+  let upcoming = $derived(isUpcoming(event.event_date));
+  let displayName = $derived(stripUpcoming(event.name));
 
   // Re-sync the editable fields only when the parent passes a genuinely new
   // saved value (e.g. after the update action re-runs the load). Comparing
@@ -244,7 +249,10 @@
   </div>
 
   <div class="modal-body">
-    <h2 id="event-modal-title" class="event-title">{event.name}</h2>
+    <h2 id="event-modal-title" class="event-title">
+      {#if upcoming}<span class="upcoming">(UPCOMING)</span>{/if}
+      {displayName}
+    </h2>
 
     <div class="modal-content">
       {@render content()}
@@ -260,7 +268,10 @@
   >
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="event-modal-title">
       <div class="modal-head">
-        <h2 id="event-modal-title">{event.name}</h2>
+        <h2 id="event-modal-title">
+          {#if upcoming}<span class="upcoming">(UPCOMING)</span>{/if}
+          {displayName}
+        </h2>
         <button type="button" class="close" aria-label="Close" onclick={close}>×</button>
       </div>
 
@@ -506,6 +517,15 @@
     margin: 0;
     font-size: clamp(1.125rem, 3vw, 1.5rem);
     letter-spacing: 0.02em;
+  }
+
+  /* Automatisk markering af kommende events, sat ud fra eventets dato. */
+  .modal-head h2 .upcoming {
+    margin-right: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: var(--accent);
   }
 
   .modal-content {

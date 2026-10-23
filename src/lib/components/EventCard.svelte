@@ -2,6 +2,7 @@
   import { enhance } from '$app/forms';
   import EventForm from './EventForm.svelte';
   import EventModal from './EventModal.svelte';
+  import { isUpcoming, stripUpcoming } from '$lib/upcoming';
 
   interface EventImage {
     id: number;
@@ -69,6 +70,12 @@
   // oprettet). Ekstra billeder vises udelukkende inde i modalen.
   let coverImages = $derived(event.images.filter((image) => image.isCover));
 
+  // Markér automatisk kommende events ud fra datoen, så ejeren ikke skal
+  // skrive "(upcoming)" i navnet. Et eventuelt manuelt indtastet
+  // "(upcoming)" fjernes, så markeringen ikke dubleres.
+  let upcoming = $derived(isUpcoming(event.event_date));
+  let displayName = $derived(stripUpcoming(event.name));
+
   function formatDate(iso: string | null): string {
     if (!iso) return 'Date to be announced';
     const [y, m, d] = iso.split('-');
@@ -86,7 +93,10 @@
   <div class="event-head">
     <div class="event-info">
       <time>{formatDate(event.event_date)}</time>
-      <span class="name">{event.name}</span>
+      {#if upcoming}
+        <span class="upcoming">(UPCOMING)</span>
+      {/if}
+      <span class="name">{displayName}</span>
       {#if event.location}
         <span class="location">{event.location}</span>
       {/if}
@@ -224,6 +234,15 @@
   .event-head .location {
     color: var(--fg-muted);
     font-size: 0.875rem;
+    white-space: nowrap;
+  }
+
+  /* Automatisk markering af kommende events, sat ud fra eventets dato. */
+  .event-head .upcoming {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: var(--accent);
     white-space: nowrap;
   }
 
