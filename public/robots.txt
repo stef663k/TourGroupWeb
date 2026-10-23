@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://tourgroupweb.pages.dev/sitemap.xml

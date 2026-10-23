@@ -1,13 +1,15 @@
 <script lang="ts">
+	import Seo from '$lib/components/Seo.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 </script>
 
-<svelte:head>
-	<title>Contact – Tour Group</title>
-	<meta name="description" content="Get in touch with Tour Group — production and lighting design for events." />
-</svelte:head>
+<Seo
+	title="Contact – Tour Group"
+	description="Get in touch with Tour Group — production and lighting design for events."
+	path="/kontakt"
+/>
 
 <!-- Fast baggrundsbillede der dækker hele siden og følger med ved scroll -->
 <div class="page-bg" aria-hidden="true" style="--hero-bg: url({data.contactBackgroundUrl});"></div>

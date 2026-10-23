@@ -2,6 +2,7 @@
   import { enhance } from '$app/forms';
   import EventForm from '$lib/components/EventForm.svelte';
   import ArtistModal from '$lib/components/ArtistModal.svelte';
+  import Seo from '$lib/components/Seo.svelte';
   import type { PageData, ActionData } from './$types';
   import type { ComponentProps } from 'svelte';
   import { openEventView, backToArtistView, resetModalState, type ModalView } from '$lib/modalView';
@@ -90,10 +91,12 @@
   }
 </script>
 
-<svelte:head>
-  <title>Artists – Tour Group</title>
-  <meta name="description" content="Artists that Tour Group has worked with." />
-</svelte:head>
+<Seo
+  title="Artists – Tour Group"
+  description="Artists that Tour Group has worked with."
+  path="/artists"
+  image={data.artists.find((artist) => artist.imageUrl)?.imageUrl ?? null}
+/>
 
 <!-- Fast baggrundsbillede der dækker hele siden og følger med ved scroll -->
 <div class="page-bg" aria-hidden="true" style="--hero-bg: url({data.artistsBackgroundUrl});"></div>

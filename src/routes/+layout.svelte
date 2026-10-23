@@ -2,10 +2,25 @@
 	import '../app.css';
 	import CookieConsent from '$lib/components/CookieConsent.svelte';
 	import { afterNavigate } from '$app/navigation';
+	import { absoluteUrl } from '$lib/seo';
 	import type { Snippet } from 'svelte';
 	import type { LayoutData } from './$types';
 
 	let { children, data }: { children: Snippet; data: LayoutData } = $props();
+
+	// Organisation-schema (JSON-LD). Uden NAP-data endnu, så kun navn,
+	// URL og logo medtages. Kan udvides med adresse/telefon senere.
+	let organizationJsonLd = $derived(
+		JSON.stringify({
+			'@context': 'https://schema.org',
+			'@type': 'Organization',
+			name: 'Tour Group',
+			url: absoluteUrl('/'),
+			logo: data.logoUrl.startsWith('http')
+				? data.logoUrl
+				: absoluteUrl(data.logoUrl)
+		})
+	);
 
 	let menuOpen = $state(false);
 
@@ -21,6 +36,10 @@
 		menuOpen = false;
 	});
 </script>
+
+<svelte:head>
+	{@html `<script type="application/ld+json">${organizationJsonLd}<\/script>`}
+</svelte:head>
 
 <nav>
 	<a href="/" class="brand" onclick={closeMenu} aria-label="Tour Group — home">

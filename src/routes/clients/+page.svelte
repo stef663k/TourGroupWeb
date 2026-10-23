@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import Seo from '$lib/components/Seo.svelte';
   import type { PageData, ActionData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -17,10 +18,11 @@
   }
 </script>
 
-<svelte:head>
-  <title>Clients – Tour Group</title>
-  <meta name="description" content="Clients that Tour Group has worked with." />
-</svelte:head>
+<Seo
+  title="Clients – Tour Group"
+  description="Clients that Tour Group has worked with."
+  path="/clients"
+/>
 
 <!-- Fast baggrundsbillede der dækker hele siden og følger med ved scroll -->
 <div class="page-bg" aria-hidden="true" style="--hero-bg: url({data.clientsBackgroundUrl});"></div>

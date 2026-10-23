@@ -1,15 +1,23 @@
 <script lang="ts">
   import EventCard from '$lib/components/EventCard.svelte';
   import EventForm from '$lib/components/EventForm.svelte';
+  import Seo from '$lib/components/Seo.svelte';
   import type { PageData, ActionData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
+
+  // Første tilgængelige cover-billede bruges som delingsbillede (og:image).
+  let shareImage = $derived(
+    data.events.flatMap((event) => event.images).find((image) => image.isCover)?.url ?? null
+  );
 </script>
 
-<svelte:head>
-  <title>Events – Tour Group</title>
-  <meta name="description" content="Events that Tour Group has helped produce." />
-</svelte:head>
+<Seo
+  title="Events – Tour Group"
+  description="Events that Tour Group has helped produce."
+  path="/events"
+  image={shareImage}
+/>
 
 <!-- Fast baggrundsbillede der dækker hele siden og følger med ved scroll -->
 <div class="page-bg" aria-hidden="true" style="--hero-bg: url({data.eventBackgroundUrl});"></div>
