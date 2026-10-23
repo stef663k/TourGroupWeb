@@ -26,6 +26,7 @@ function createFakeD1() {
 		details: string | null;
 		image_key: string | null;
 		image_content_type: string | null;
+		image_alt: string | null;
 		sort_order?: number;
 		created_at: number;
 	}[] = [];
@@ -34,6 +35,7 @@ function createFakeD1() {
 		event_id: number;
 		r2_key: string;
 		caption: string | null;
+		alt: string | null;
 		content_type: string;
 		sort_order: number;
 		is_cover: number;
@@ -55,14 +57,14 @@ function createFakeD1() {
 				}
 				if (
 					q.startsWith(
-						'SELECT id, name, years, details, image_key, image_content_type, sort_order, created_at FROM artists ORDER BY sort_order'
+						'SELECT id, name, years, details, image_key, image_content_type, image_alt, sort_order, created_at FROM artists ORDER BY sort_order'
 					)
 				) {
 					return { results: artists as T[], success: true };
 				}
 				if (
 					q.startsWith(
-						'SELECT id, event_id, r2_key, caption, content_type, sort_order, is_cover, created_at FROM event_images WHERE event_id'
+						'SELECT id, event_id, r2_key, caption, alt, content_type, sort_order, is_cover, created_at FROM event_images WHERE event_id'
 					)
 				) {
 					const [eventId] = args as [number];
@@ -96,17 +98,24 @@ function createFakeD1() {
 					const [id] = args as [number];
 					return (events.find((e) => e.id === id) ?? null) as T | null;
 				}
-				if (q.startsWith('SELECT id, name, years, details, image_key, image_content_type, sort_order, created_at FROM artists WHERE id')) {
+				if (q.startsWith('SELECT id, name, years, details, image_key, image_content_type, image_alt, sort_order, created_at FROM artists WHERE id')) {
 					const [id] = args as [number];
 					return (artists.find((a) => a.id === id) ?? null) as T | null;
 				}
 				if (
 					q.startsWith(
-						'SELECT id, event_id, r2_key, caption, content_type, sort_order, is_cover, created_at FROM event_images WHERE id'
+						'SELECT id, event_id, r2_key, caption, alt, content_type, sort_order, is_cover, created_at FROM event_images WHERE id'
 					)
 				) {
 					const [id] = args as [number];
 					return (images.find((i) => i.id === id) ?? null) as T | null;
+				}
+				if (q.startsWith('UPDATE event_images SET alt')) {
+					const [alt, id] = args as [string | null, number];
+					const row = images.find((i) => i.id === id);
+					if (!row) return null;
+					row.alt = alt;
+					return row as T;
 				}
 				if (q.startsWith('UPDATE event_images SET')) {
 					const [r2_key, content_type, id] = args as [string, string, number];
@@ -177,9 +186,10 @@ function createFakeD1() {
 					return row as T;
 				}
 				if (q.startsWith('INSERT INTO event_images')) {
-					const [event_id, r2_key, caption, content_type, sort_order, is_cover] = args as [
+					const [event_id, r2_key, caption, alt, content_type, sort_order, is_cover] = args as [
 						number,
 						string,
+						string | null,
 						string | null,
 						string,
 						number,
@@ -190,6 +200,7 @@ function createFakeD1() {
 						event_id,
 						r2_key,
 						caption,
+						alt,
 						content_type,
 						sort_order,
 						is_cover,
@@ -211,10 +222,10 @@ function createFakeD1() {
 		_artists: artists,
 		_seed: (
 			rows: Omit<(typeof events)[number], 'artist_id' | 'link_label'>[],
-			imageRows: Omit<(typeof images)[number], 'is_cover'>[]
+			imageRows: Omit<(typeof images)[number], 'is_cover' | 'alt'>[]
 		) => {
 			events.push(...rows.map((r) => ({ ...r, artist_id: null, link_label: null })));
-			images.push(...imageRows.map((r) => ({ ...r, is_cover: 0 })));
+			images.push(...imageRows.map((r) => ({ ...r, is_cover: 0, alt: null })));
 		},
 		_seedArtist: (row: { id: number; name: string }) => {
 			artists.push({
@@ -224,6 +235,7 @@ function createFakeD1() {
 				details: null,
 				image_key: null,
 				image_content_type: null,
+				image_alt: null,
 				created_at: 0
 			});
 		}
@@ -312,7 +324,7 @@ async function runAddEventImage(
 	form: FormData,
 	platform: unknown,
 	owner = true
-): Promise<ActionResult> {
+	): Promise<ActionResult> {
 	const action = actions.removeEventImage;
 	const result = await action({
 		request: new Request('http://localhost/events?/removeEventImage', {
@@ -323,7 +335,24 @@ async function runAddEventImage(
 		locals: { owner }
 	} as never);
 	return result as unknown as ActionResult;
-}
+	}
+
+	async function runUpdateEventImageAlt(
+	form: FormData,
+	platform: unknown,
+	owner = true
+	): Promise<ActionResult> {
+	const action = actions.updateEventImageAlt;
+	const result = await action({
+		request: new Request('http://localhost/events?/updateEventImageAlt', {
+			method: 'POST',
+			body: form
+		}),
+		platform,
+		locals: { owner }
+	} as never);
+	return result as unknown as ActionResult;
+	}
 
 type LoadResult = {
 	events: {
@@ -331,8 +360,8 @@ type LoadResult = {
 		link_label: string | null;
 		artist_id: number | null;
 		artistName: string | null;
-		images: { id: number; caption: string | null; url: string; isCover: boolean }[];
-	}[];
+		images: { id: number; caption: string | null; alt: string | null; url: string; isCover: boolean }[];
+		}[];
 	artists: { id: number; name: string }[];
 	imageBaseUrl: string | undefined;
 	eventBackgroundUrl: string;
@@ -429,6 +458,7 @@ describe('events load', () => {
 			{
 				id: 10,
 				caption: 'Første',
+				alt: null,
 				url: 'https://cdn.example.com/events/sommerfest/a.jpg',
 				isCover: false
 			}
@@ -1452,5 +1482,102 @@ describe('createEvent action', () => {
 		form.set('id', '10');
 		const res = await runRemoveEventImage(form, makePlatform(undefined));
 		expect(res.status).toBe(500);
+	});
+	});
+
+	describe('updateEventImageAlt action', () => {
+	let errorSpy: ReturnType<typeof vi.spyOn>;
+
+	beforeEach(() => {
+		errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+	});
+
+	afterEach(() => {
+		errorSpy.mockRestore();
+	});
+
+	function seed(db: ReturnType<typeof createFakeD1>) {
+		db._seed(
+			[
+				{
+					id: 1,
+					slug: 'sommerfest',
+					name: 'Sommerfest',
+					event_date: null,
+					location: null,
+					description: null,
+					details: null,
+					link: null,
+					created_at: 0
+				}
+			],
+			[
+				{
+					id: 10,
+					event_id: 1,
+					r2_key: 'events/sommerfest/a.jpg',
+					caption: null,
+					content_type: 'image/jpeg',
+					sort_order: 0,
+					created_at: 0
+				}
+			]
+		);
+	}
+
+	it('afviser en ikke-owner', async () => {
+		const form = new FormData();
+		form.set('id', '10');
+		form.set('alt', 'Scene');
+		const res = await runUpdateEventImageAlt(form, makePlatform(createFakeD1()), false);
+		expect(res.status).toBe(403);
+	});
+
+	it('afviser et ugyldigt id', async () => {
+		const form = new FormData();
+		form.set('id', 'abc');
+		const res = await runUpdateEventImageAlt(form, makePlatform(createFakeD1()));
+		expect(res.status).toBe(400);
+	});
+
+	it('returnerer 404 for et billede der ikke findes', async () => {
+		const form = new FormData();
+		form.set('id', '999');
+		form.set('alt', 'Scene');
+		const res = await runUpdateEventImageAlt(form, makePlatform(createFakeD1()));
+		expect(res.status).toBe(404);
+	});
+
+	it('gemmer alt-teksten retroaktivt på et eksisterende billede', async () => {
+		const db = createFakeD1();
+		seed(db);
+		const form = new FormData();
+		form.set('id', '10');
+		form.set('alt', 'Bandet på scenen');
+		const res = await runUpdateEventImageAlt(form, makePlatform(db));
+		expect(res.success).toBe(true);
+		expect(db._images[0].alt).toBe('Bandet på scenen');
+	});
+
+	it('rydder alt-teksten når feltet er tomt', async () => {
+		const db = createFakeD1();
+		seed(db);
+		db._images[0].alt = 'Gammel tekst';
+		const form = new FormData();
+		form.set('id', '10');
+		form.set('alt', '');
+		const res = await runUpdateEventImageAlt(form, makePlatform(db));
+		expect(res.success).toBe(true);
+		expect(db._images[0].alt).toBeNull();
+	});
+
+	it('afviser en for lang alt-tekst', async () => {
+		const db = createFakeD1();
+		seed(db);
+		const form = new FormData();
+		form.set('id', '10');
+		form.set('alt', 'x'.repeat(251));
+		const res = await runUpdateEventImageAlt(form, makePlatform(db));
+		expect(res.status).toBe(400);
 	});
 	});

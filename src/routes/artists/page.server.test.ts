@@ -15,6 +15,7 @@ function createFakeD1() {
 		details: string | null;
 		image_key?: string | null;
 		image_content_type?: string | null;
+		image_alt?: string | null;
 		sort_order?: number;
 		created_at: number;
 	}[] = [];
@@ -45,6 +46,7 @@ function createFakeD1() {
 		event_id: number;
 		r2_key: string;
 		caption: string | null;
+		alt: string | null;
 		content_type: string;
 		sort_order: number;
 		is_cover: number;
@@ -97,18 +99,32 @@ function createFakeD1() {
 						details: null,
 						image_key: null,
 						image_content_type: null,
+						image_alt: null,
 						sort_order: nextSortOrder,
 						created_at: 0
 					};
 					rows.push(row);
 					return row as T;
 				}
+				if (q.startsWith('UPDATE artists SET image_alt')) {
+					const [alt, id] = args as [string | null, number];
+					const row = rows.find((r) => r.id === id);
+					if (!row) return null;
+					row.image_alt = alt;
+					return row as T;
+				}
 				if (q.startsWith('UPDATE artists SET image_key = ?1, image_content_type = ?2')) {
-					const [imageKey, imageContentType, id] = args as [string | null, string | null, number];
+					const [imageKey, imageContentType, alt, id] = args as [
+						string | null,
+						string | null,
+						string | null,
+						number
+					];
 					const row = rows.find((r) => r.id === id);
 					if (!row) return null;
 					row.image_key = imageKey;
 					row.image_content_type = imageContentType;
+					if (alt !== null) row.image_alt = alt;
 					return row as T;
 				}
 				if (q.startsWith('UPDATE artists SET details')) {
@@ -126,7 +142,7 @@ function createFakeD1() {
 					row.years = years;
 					return row as T;
 				}
-				if (q.startsWith('SELECT id, name, years, details, image_key, image_content_type, sort_order, created_at FROM artists WHERE id')) {
+				if (q.startsWith('SELECT id, name, years, details, image_key, image_content_type, image_alt, sort_order, created_at FROM artists WHERE id')) {
 					const [id] = args as [number];
 					return (rows.find((r) => r.id === id) ?? null) as T | null;
 				}
@@ -150,7 +166,7 @@ function createFakeD1() {
 				const q = normalized();
 				if (
 					q.startsWith(
-						'SELECT id, name, years, details, image_key, image_content_type, sort_order, created_at FROM artists ORDER BY sort_order'
+						'SELECT id, name, years, details, image_key, image_content_type, image_alt, sort_order, created_at FROM artists ORDER BY sort_order'
 					)
 				) {
 					const sorted = [...rows].sort(
@@ -174,7 +190,7 @@ function createFakeD1() {
 				}
 				if (
 					q.startsWith(
-						'SELECT id, event_id, r2_key, caption, content_type, sort_order, is_cover, created_at FROM event_images WHERE event_id'
+						'SELECT id, event_id, r2_key, caption, alt, content_type, sort_order, is_cover, created_at FROM event_images WHERE event_id'
 					)
 				) {
 					const [eventId] = args as [number];
@@ -231,12 +247,14 @@ function createFakeD1() {
 			event_id: number;
 			r2_key: string;
 			caption?: string | null;
+			alt?: string | null;
 		}) => {
 			images.push({
 				id: image.id,
 				event_id: image.event_id,
 				r2_key: image.r2_key,
 				caption: image.caption ?? null,
+				alt: image.alt ?? null,
 				content_type: 'image/jpeg',
 				sort_order: 0,
 				is_cover: 0,
@@ -273,6 +291,23 @@ async function runUpdateArtist(form: FormData, platform: unknown, owner = true):
 	return result as unknown as ActionResult;
 }
 
+async function runUpdateArtistImageAlt(
+	form: FormData,
+	platform: unknown,
+	owner = true
+): Promise<ActionResult> {
+	const action = actions.updateArtistImageAlt;
+	const result = await action({
+		request: new Request('http://localhost/artists?/updateArtistImageAlt', {
+			method: 'POST',
+			body: form
+		}),
+		platform,
+		locals: { owner }
+	} as never);
+	return result as unknown as ActionResult;
+}
+
 async function runDeleteArtist(form: FormData, platform: unknown, owner = true): Promise<ActionResult> {
 	const action = actions.deleteArtist;
 	const result = await action({
@@ -297,11 +332,17 @@ type LoadResult = {
 			event_date: string | null;
 			artist_id: number | null;
 			artistName: string | null;
-			images: { id: number; caption: string | null; url: string; isCover: boolean }[];
-		}[];
-	}[];
-	artistsBackgroundUrl: string;
-};
+			images: {
+				id: number;
+				caption: string | null;
+				alt: string | null;
+				url: string;
+				isCover: boolean;
+			}[];
+			}[];
+			}[];
+			artistsBackgroundUrl: string;
+			};
 
 async function runLoad(platform: unknown): Promise<LoadResult> {
 	return (await load({ platform } as never)) as unknown as LoadResult;
@@ -434,6 +475,7 @@ describe('artists load', () => {
 			{
 				id: 10,
 				caption: 'Scene',
+				alt: null,
 				isCover: false,
 				url: 'https://cdn.example.com/events/nyeste/a.jpg'
 			}
@@ -1063,5 +1105,81 @@ describe('artists load', () => {
 
 		const data = await runLoad(makePlatform(db));
 		expect(data.artists.map((artist) => artist.name)).toEqual(['C', 'A', 'B']);
+		});
+		});
+
+		describe('updateArtistImageAlt action', () => {
+		let errorSpy: ReturnType<typeof vi.spyOn>;
+
+		beforeEach(() => {
+		errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		});
+
+		afterEach(() => {
+		errorSpy.mockRestore();
+		});
+
+		async function seedArtist(db: ReturnType<typeof createFakeD1>) {
+		const create = new FormData();
+		create.set('name', 'Faustix');
+		await runCreateArtist(create, makePlatform(db));
+		return db._rows[0].id;
+		}
+
+		it('afviser en ikke-owner', async () => {
+		const form = new FormData();
+		form.set('id', '1');
+		form.set('alt', 'Portræt');
+		const res = await runUpdateArtistImageAlt(form, makePlatform(createFakeD1()), false);
+		expect(res.status).toBe(403);
+		});
+
+		it('afviser et ugyldigt id', async () => {
+		const form = new FormData();
+		form.set('id', 'abc');
+		form.set('alt', 'Portræt');
+		const res = await runUpdateArtistImageAlt(form, makePlatform(createFakeD1()));
+		expect(res.status).toBe(400);
+		});
+
+		it('returnerer 404 for en post der ikke findes', async () => {
+		const form = new FormData();
+		form.set('id', '999');
+		form.set('alt', 'Portræt');
+		const res = await runUpdateArtistImageAlt(form, makePlatform(createFakeD1()));
+		expect(res.status).toBe(404);
+		});
+
+		it('gemmer alt-teksten retroaktivt', async () => {
+		const db = createFakeD1();
+		const id = await seedArtist(db);
+		const form = new FormData();
+		form.set('id', String(id));
+		form.set('alt', 'Portræt af Faustix');
+		const res = await runUpdateArtistImageAlt(form, makePlatform(db));
+		expect(res.success).toBe(true);
+		expect(db._rows[0].image_alt).toBe('Portræt af Faustix');
+		});
+
+		it('rydder alt-teksten når feltet er tomt', async () => {
+		const db = createFakeD1();
+		const id = await seedArtist(db);
+		db._rows[0].image_alt = 'Gammel tekst';
+		const form = new FormData();
+		form.set('id', String(id));
+		form.set('alt', '');
+		const res = await runUpdateArtistImageAlt(form, makePlatform(db));
+		expect(res.success).toBe(true);
+		expect(db._rows[0].image_alt).toBeNull();
+		});
+
+		it('afviser en for lang alt-tekst', async () => {
+		const db = createFakeD1();
+		const id = await seedArtist(db);
+		const form = new FormData();
+		form.set('id', String(id));
+		form.set('alt', 'x'.repeat(251));
+		const res = await runUpdateArtistImageAlt(form, makePlatform(db));
+		expect(res.status).toBe(400);
 		});
 		});

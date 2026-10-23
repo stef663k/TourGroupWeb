@@ -8,6 +8,7 @@ import {
 	updateArtist,
 	updateArtistDetails,
 	updateArtistImage,
+	updateArtistImageAlt,
 	listArtistLinks,
 	getArtistLink,
 	addArtistLink,
@@ -40,6 +41,7 @@ function createFakeD1(): FakeD1 {
 		details: string | null;
 		image_key: string | null;
 		image_content_type: string | null;
+		image_alt: string | null;
 		sort_order: number;
 		created_at: number;
 	}[] = [];
@@ -71,6 +73,7 @@ function createFakeD1(): FakeD1 {
 					details: null,
 					image_key: null,
 					image_content_type: null,
+					image_alt: null,
 					sort_order: nextSortOrder,
 					created_at: Math.floor(Date.now() / 1000)
 				};
@@ -79,7 +82,7 @@ function createFakeD1(): FakeD1 {
 			}
 			if (
 				q.startsWith(
-					'SELECT id, name, years, details, image_key, image_content_type, sort_order, created_at FROM artists WHERE id'
+					'SELECT id, name, years, details, image_key, image_content_type, image_alt, sort_order, created_at FROM artists WHERE id'
 				)
 			) {
 				const [id] = args as [number];
@@ -100,12 +103,25 @@ function createFakeD1(): FakeD1 {
 				row.details = details;
 				return row as T;
 			}
+			if (q.startsWith('UPDATE artists SET image_alt')) {
+				const [alt, id] = args as [string | null, number];
+				const row = rows.find((r) => r.id === id);
+				if (!row) return null;
+				row.image_alt = alt;
+				return row as T;
+			}
 			if (q.startsWith('UPDATE artists SET image_key = ?1, image_content_type = ?2')) {
-				const [imageKey, imageContentType, id] = args as [string | null, string | null, number];
+				const [imageKey, imageContentType, alt, id] = args as [
+					string | null,
+					string | null,
+					string | null,
+					number
+				];
 				const row = rows.find((r) => r.id === id);
 				if (!row) return null;
 				row.image_key = imageKey;
 				row.image_content_type = imageContentType;
+				if (alt !== null) row.image_alt = alt;
 				return row as T;
 			}
 			if (q.startsWith('INSERT INTO artist_links')) {
@@ -132,7 +148,7 @@ function createFakeD1(): FakeD1 {
 			const q = normalized();
 			if (
 				q.startsWith(
-					'SELECT id, name, years, details, image_key, image_content_type, sort_order, created_at FROM artists ORDER BY sort_order'
+					'SELECT id, name, years, details, image_key, image_content_type, image_alt, sort_order, created_at FROM artists ORDER BY sort_order'
 				)
 			) {
 				const sorted = [...rows].sort(
@@ -392,6 +408,50 @@ describe('artists', () => {
 		expect(
 			await updateArtistImage(db, 999, { r2Key: 'artist/x/y.jpg', contentType: 'image/jpeg' })
 		).toBeNull();
+	});
+
+	it('gemmer alt-teksten sammen med profilbilledet', async () => {
+		const created = await createArtist(db, { name: 'Faustix' });
+		const updated = await updateArtistImage(db, created.id, {
+			r2Key: 'artist/faustix/abc.jpg',
+			contentType: 'image/jpeg',
+			alt: 'Portræt af Faustix'
+		});
+		expect(updated?.image_alt).toBe('Portræt af Faustix');
+	});
+
+	it('bevarer alt-teksten når billedet udskiftes uden ny alt', async () => {
+		const created = await createArtist(db, { name: 'Faustix' });
+		await updateArtistImageAlt(db, created.id, 'Portræt');
+		const updated = await updateArtistImage(db, created.id, {
+			r2Key: 'artist/faustix/nyt.jpg',
+			contentType: 'image/jpeg'
+		});
+		expect(updated?.image_alt).toBe('Portræt');
+	});
+
+	it('opdaterer alt-teksten retroaktivt på et profilbillede', async () => {
+		const created = await createArtist(db, { name: 'Faustix' });
+		await updateArtistImage(db, created.id, {
+			r2Key: 'artist/faustix/abc.jpg',
+			contentType: 'image/jpeg'
+		});
+		const updated = await updateArtistImageAlt(db, created.id, 'Live på scenen');
+		expect(updated?.image_alt).toBe('Live på scenen');
+
+		const fetched = await getArtist(db, created.id);
+		expect(fetched?.image_alt).toBe('Live på scenen');
+	});
+
+	it('rydder alt-teksten når der sendes null', async () => {
+		const created = await createArtist(db, { name: 'Faustix' });
+		await updateArtistImageAlt(db, created.id, 'Midlertidig');
+		const cleared = await updateArtistImageAlt(db, created.id, null);
+		expect(cleared?.image_alt).toBeNull();
+	});
+
+	it('returnerer null når alt-teksten opdateres på en ukendt række', async () => {
+		expect(await updateArtistImageAlt(db, 999, 'tekst')).toBeNull();
 	});
 
 	it('lister profilbillede med listen af artister', async () => {

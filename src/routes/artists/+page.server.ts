@@ -9,6 +9,7 @@ import {
 	updateArtist,
 	updateArtistDetails,
 	updateArtistImage,
+	updateArtistImageAlt,
 	deleteArtist,
 	listArtistLinks,
 	getArtistLink,
@@ -88,6 +89,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 				images: images.map((img) => ({
 					id: img.id,
 					caption: img.caption,
+					alt: img.alt,
 					isCover: img.is_cover === 1,
 					url: publicImageUrl(img.r2_key, baseUrl)
 				}))
@@ -136,6 +138,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 				...artist,
 				latestEventId: latestEventIdByArtist.get(artist.id) ?? null,
 				imageUrl: artist.image_key ? publicImageUrl(artist.image_key, baseUrl) : null,
+				imageAlt: artist.image_alt,
 				links: links.map((link) => ({ id: link.id, label: link.label, url: link.url })),
 				events: artistEvents
 			};
@@ -155,11 +158,13 @@ export const actions: Actions = {
 		const data = await request.formData();
 		const name = String(data.get('name') ?? '').trim();
 		const years = String(data.get('years') ?? '').trim();
+		const imageAlt = String(data.get('imageAlt') ?? '').trim();
 		const file = data.get('file');
 
 		if (!name) return fail(400, { error: 'Name is required.' });
 		if (name.length > 200) return fail(400, { error: 'The name is too long.' });
 		if (years.length > 50) return fail(400, { error: 'The year is too long.' });
+		if (imageAlt.length > 250) return fail(400, { error: 'The alt text is too long.' });
 
 		// Valgfrit profilbillede. Er der valgt en fil, valideres den her, så
 		// vi ikke opretter artisten og derefter fejler på et ugyldigt billede.
@@ -198,7 +203,8 @@ export const actions: Actions = {
 				});
 				await updateArtistImage(db, created.id, {
 					r2Key: key,
-					contentType: imageValidation.contentType
+					contentType: imageValidation.contentType,
+					alt: imageAlt || name
 				});
 			} catch (err) {
 				console.error('Kunne ikke uploade artist-billede:', err);
@@ -223,12 +229,14 @@ export const actions: Actions = {
 
 		const name = String(data.get('name') ?? '').trim();
 		const years = String(data.get('years') ?? '').trim();
+		const imageAlt = String(data.get('imageAlt') ?? '').trim();
 		const removeImage = String(data.get('removeImage') ?? '') === '1';
 		const file = data.get('file');
 
 		if (!name) return fail(400, { error: 'Name is required.' });
 		if (name.length > 200) return fail(400, { error: 'The name is too long.' });
 		if (years.length > 50) return fail(400, { error: 'The year is too long.' });
+		if (imageAlt.length > 250) return fail(400, { error: 'The alt text is too long.' });
 
 		const existing = await getArtist(db, id);
 		if (!existing) return fail(404, { error: 'The entry does not exist.' });
@@ -270,7 +278,8 @@ export const actions: Actions = {
 				});
 				await updateArtistImage(db, id, {
 					r2Key: key,
-					contentType: imageValidation.contentType
+					contentType: imageValidation.contentType,
+					alt: imageAlt || name
 				});
 			} catch (err) {
 				console.error('Kunne ikke uploade artist-billede:', err);
@@ -298,6 +307,32 @@ export const actions: Actions = {
 					console.error(`Kunne ikke slette artist-billede ${existing.image_key}:`, err);
 				}
 			}
+		}
+
+		return { success: true };
+	},
+
+	updateArtistImageAlt: async ({ request, platform, locals }) => {
+		if (!locals.owner) return fail(403, { error: 'Not authorized.' });
+
+		const db = platform?.env?.DB;
+		if (!db) return fail(500, { error: 'The database is not configured.' });
+
+		const data = await request.formData();
+		const id = Number(String(data.get('id') ?? '').trim());
+		if (!Number.isInteger(id)) return fail(400, { error: 'Invalid entry.' });
+
+		const alt = String(data.get('alt') ?? '').trim();
+		if (alt.length > 250) return fail(400, { error: 'The alt text is too long.' });
+
+		const existing = await getArtist(db, id);
+		if (!existing) return fail(404, { error: 'The entry does not exist.' });
+
+		try {
+			await updateArtistImageAlt(db, id, alt || null);
+		} catch (err) {
+			console.error('Kunne ikke opdatere alt-tekst:', err);
+			return fail(500, { error: 'Could not save the alt text. Please try again later.' });
 		}
 
 		return { success: true };

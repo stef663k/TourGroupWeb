@@ -13,6 +13,7 @@
   interface EventImage {
     id: number;
     caption: string | null;
+    alt: string | null;
     url: string;
     isCover: boolean;
   }
@@ -37,6 +38,7 @@
     years: string | null;
     details: string | null;
     imageUrl?: string | null;
+    imageAlt?: string | null;
     links: ArtistLink[];
     events?: ArtistEvent[];
   }
@@ -202,7 +204,7 @@
       <div class="modal-head">
         <div class="modal-title-group">
           {#if artist.imageUrl}
-            <img class="modal-thumb" src={artist.imageUrl} alt={artist.name} />
+            <img class="modal-thumb" src={artist.imageUrl} alt={artist.imageAlt ?? artist.name} />
           {/if}
           <h2 id="artist-modal-title">{artist.name}</h2>
         </div>

@@ -36,11 +36,12 @@ export interface EventRow {
 	event_id: number;
 	r2_key: string;
 	caption: string | null;
+	alt: string | null;
 	content_type: string;
 	sort_order: number;
 	is_cover: number;
 	created_at: number;
-}
+	}
 
 export interface EventWithImages extends EventRow {
 	images: EventImageRow[];
@@ -53,6 +54,7 @@ export interface ArtistRow {
 	details: string | null;
 	image_key: string | null;
 	image_content_type: string | null;
+	image_alt: string | null;
 	sort_order: number;
 	created_at: number;
 }
@@ -292,7 +294,7 @@ export async function updateEvent(
 			export async function listArtists(db: D1Database): Promise<ArtistRow[]> {
 				const result = await db
 					.prepare(
-						'SELECT id, name, years, details, image_key, image_content_type, sort_order, created_at ' +
+						'SELECT id, name, years, details, image_key, image_content_type, image_alt, sort_order, created_at ' +
 							'FROM artists ORDER BY sort_order, id'
 					)
 					.all<ArtistRow>();
@@ -305,7 +307,7 @@ export async function updateEvent(
 			export async function getArtist(db: D1Database, id: number): Promise<ArtistRow | null> {
 				const row = await db
 					.prepare(
-						'SELECT id, name, years, details, image_key, image_content_type, sort_order, created_at FROM artists WHERE id = ?1'
+						'SELECT id, name, years, details, image_key, image_content_type, image_alt, sort_order, created_at FROM artists WHERE id = ?1'
 					)
 					.bind(id)
 					.first<ArtistRow>();
@@ -324,7 +326,7 @@ export async function updateEvent(
 				const result = await db
 					.prepare(
 						'UPDATE artists SET name = ?1, years = ?2 ' +
-							'WHERE id = ?3 RETURNING id, name, years, details, image_key, image_content_type, sort_order, created_at'
+							'WHERE id = ?3 RETURNING id, name, years, details, image_key, image_content_type, image_alt, sort_order, created_at'
 					)
 					.bind(input.name, input.years ?? null, id)
 					.first<ArtistRow>();
@@ -343,7 +345,7 @@ export async function updateEvent(
 					.prepare(
 						'INSERT INTO artists (name, years, sort_order) ' +
 							'VALUES (?1, ?2, (SELECT COALESCE(MAX(sort_order) + 1, 0) FROM artists)) ' +
-							'RETURNING id, name, years, details, image_key, image_content_type, sort_order, created_at'
+							'RETURNING id, name, years, details, image_key, image_content_type, image_alt, sort_order, created_at'
 					)
 					.bind(input.name, input.years ?? null)
 					.first<ArtistRow>();
@@ -375,7 +377,7 @@ export async function updateArtistDetails(
 	const result = await db
 		.prepare(
 			'UPDATE artists SET details = ?1 ' +
-				'WHERE id = ?2 RETURNING id, name, years, details, image_key, image_content_type, sort_order, created_at'
+				'WHERE id = ?2 RETURNING id, name, years, details, image_key, image_content_type, image_alt, sort_order, created_at'
 		)
 		.bind(details, id)
 		.first<ArtistRow>();
@@ -385,18 +387,39 @@ export async function updateArtistDetails(
 /**
  * Sætter (eller rydder) profilbilledet på en artist og returnerer rækken.
  * Returnerer null hvis rækken ikke findes. Send null for at fjerne billedet.
+ * `alt` overskriver alt-teksten når den er angivet; ellers bevares den.
  */
 export async function updateArtistImage(
 	db: D1Database,
 	id: number,
-	image: { r2Key: string; contentType: string } | null
+	image: { r2Key: string; contentType: string; alt?: string | null } | null
 ): Promise<ArtistRow | null> {
 	const result = await db
 		.prepare(
-			'UPDATE artists SET image_key = ?1, image_content_type = ?2 ' +
-				'WHERE id = ?3 RETURNING id, name, years, details, image_key, image_content_type, sort_order, created_at'
+			'UPDATE artists SET image_key = ?1, image_content_type = ?2, ' +
+				'image_alt = CASE WHEN ?3 IS NULL THEN image_alt ELSE ?3 END ' +
+				'WHERE id = ?4 RETURNING id, name, years, details, image_key, image_content_type, image_alt, sort_order, created_at'
 		)
-		.bind(image?.r2Key ?? null, image?.contentType ?? null, id)
+		.bind(image?.r2Key ?? null, image?.contentType ?? null, image?.alt ?? null, id)
+		.first<ArtistRow>();
+	return result ?? null;
+}
+
+/**
+ * Opdaterer alt-teksten på en artists profilbillede og returnerer rækken.
+ * Returnerer null hvis rækken ikke findes. Send null for at rydde alt-teksten.
+ */
+export async function updateArtistImageAlt(
+	db: D1Database,
+	id: number,
+	alt: string | null
+): Promise<ArtistRow | null> {
+	const result = await db
+		.prepare(
+			'UPDATE artists SET image_alt = ?1 ' +
+				'WHERE id = ?2 RETURNING id, name, years, details, image_key, image_content_type, image_alt, sort_order, created_at'
+		)
+		.bind(alt, id)
 		.first<ArtistRow>();
 	return result ?? null;
 }
@@ -492,6 +515,7 @@ export async function addEventImage(
 		eventId: number;
 		r2Key: string;
 		caption?: string | null;
+		alt?: string | null;
 		contentType: string;
 		sortOrder?: number;
 		isCover?: boolean;
@@ -499,14 +523,15 @@ export async function addEventImage(
 ): Promise<EventImageRow> {
 	const result = await db
 		.prepare(
-			'INSERT INTO event_images (event_id, r2_key, caption, content_type, sort_order, is_cover) ' +
-				'VALUES (?1, ?2, ?3, ?4, ?5, ?6) ' +
-				'RETURNING id, event_id, r2_key, caption, content_type, sort_order, is_cover, created_at'
+			'INSERT INTO event_images (event_id, r2_key, caption, alt, content_type, sort_order, is_cover) ' +
+				'VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) ' +
+				'RETURNING id, event_id, r2_key, caption, alt, content_type, sort_order, is_cover, created_at'
 		)
 		.bind(
 			input.eventId,
 			input.r2Key,
 			input.caption ?? null,
+			input.alt ?? null,
 			input.contentType,
 			input.sortOrder ?? 0,
 			input.isCover ? 1 : 0
@@ -525,7 +550,7 @@ export async function listEventImages(
 ): Promise<EventImageRow[]> {
 	const result = await db
 		.prepare(
-			'SELECT id, event_id, r2_key, caption, content_type, sort_order, is_cover, created_at ' +
+			'SELECT id, event_id, r2_key, caption, alt, content_type, sort_order, is_cover, created_at ' +
 				'FROM event_images WHERE event_id = ?1 ORDER BY sort_order, id'
 		)
 		.bind(eventId)
@@ -542,7 +567,7 @@ export async function getEventImage(
 ): Promise<EventImageRow | null> {
 	const row = await db
 		.prepare(
-			'SELECT id, event_id, r2_key, caption, content_type, sort_order, is_cover, created_at ' +
+			'SELECT id, event_id, r2_key, caption, alt, content_type, sort_order, is_cover, created_at ' +
 				'FROM event_images WHERE id = ?1'
 		)
 		.bind(id)
@@ -577,9 +602,28 @@ export async function updateEventImage(
 	const result = await db
 		.prepare(
 			'UPDATE event_images SET r2_key = ?1, content_type = ?2 WHERE id = ?3 ' +
-				'RETURNING id, event_id, r2_key, caption, content_type, sort_order, is_cover, created_at'
+				'RETURNING id, event_id, r2_key, caption, alt, content_type, sort_order, is_cover, created_at'
 		)
 		.bind(input.r2Key, input.contentType, id)
+		.first<EventImageRow>();
+	return result ?? null;
+}
+
+/**
+ * Opdaterer alt-teksten på et billede og returnerer rækken.
+ * Returnerer null hvis billedet ikke findes. Send null for at rydde alt-teksten.
+ */
+export async function updateEventImageAlt(
+	db: D1Database,
+	id: number,
+	alt: string | null
+): Promise<EventImageRow | null> {
+	const result = await db
+		.prepare(
+			'UPDATE event_images SET alt = ?1 WHERE id = ?2 ' +
+				'RETURNING id, event_id, r2_key, caption, alt, content_type, sort_order, is_cover, created_at'
+		)
+		.bind(alt, id)
 		.first<EventImageRow>();
 	return result ?? null;
 }

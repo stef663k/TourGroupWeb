@@ -6,6 +6,7 @@
   interface EventImage {
     id: number;
     caption: string | null;
+    alt: string | null;
     url: string;
     isCover: boolean;
   }
@@ -136,7 +137,7 @@
             <ul class="images">
               {#each coverImages as image (image.id)}
                 <li>
-                  <img src={image.url} alt={image.caption ?? event.name} loading="lazy" />
+                  <img src={image.url} alt={image.alt ?? image.caption ?? event.name} loading="lazy" />
                 </li>
               {/each}
             </ul>

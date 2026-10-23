@@ -12,6 +12,7 @@
     | 'link'
     | 'linkLabel'
     | 'file'
+    | 'imageAlt'
     | 'artist';
 
   type ArtistOption = { id: number; name: string };
@@ -44,6 +45,7 @@
       location?: string | null;
       link?: string | null;
       linkLabel?: string | null;
+      imageAlt?: string | null;
       artistId?: number | null;
       };
     id?: number | null;
@@ -230,6 +232,18 @@
       bind:this={fileInput}
       onchange={onFileChange}
     />
+
+    {#if show('imageAlt')}
+      <label for="imageAlt">Alt text (optional)</label>
+      <input
+        id="imageAlt"
+        name="imageAlt"
+        type="text"
+        value={initial.imageAlt ?? ''}
+        maxlength="250"
+        placeholder="Describe the image for screen readers"
+      />
+    {/if}
 
     {#if compressing}
       <p class="note">Compressing image…</p>

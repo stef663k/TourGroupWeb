@@ -122,8 +122,8 @@
             onclick={() => openArtist(work)}
           >
             {#if work.imageUrl}
-              <span class="work-thumb" aria-hidden="true">
-                <img src={work.imageUrl} alt="" loading="lazy" />
+              <span class="work-thumb">
+                <img src={work.imageUrl} alt={work.imageAlt ?? work.name} loading="lazy" />
               </span>
             {/if}
             <span class="work-name">{work.name}</span>
@@ -201,19 +201,30 @@
             <label for="edit-photo-{work.id}">Picture {work.imageUrl ? '(replaces the current one)' : '(optional)'}</label>
             {#if work.imageUrl}
               <div class="edit-image-current">
-                <img src={work.imageUrl} alt="Current picture for {work.name}" />
+                <img src={work.imageUrl} alt={work.imageAlt ?? work.name} />
                 <label class="remove-image-label">
                   <input type="checkbox" name="removeImage" value="1" />
                   Delete current picture
                 </label>
               </div>
-            {/if}
-            <input
+              <label for="edit-alt-{work.id}">Alt text</label>
+              <input
+                id="edit-alt-{work.id}"
+                name="imageAlt"
+                type="text"
+                maxlength="250"
+                value={work.imageAlt ?? ''}
+                placeholder="Describe the picture for screen readers"
+              />
+              {:else}
+              <input type="hidden" name="imageAlt" value="" />
+              {/if}
+              <input
               id="edit-photo-{work.id}"
               name="file"
               type="file"
               accept="image/*"
-            />
+              />
 
             <div class="edit-actions">
               <button type="button" class="cancel" onclick={() => (editingId = null)}>Cancel</button>
@@ -289,7 +300,7 @@
     <div class="label">Create artist</div>
     <EventForm
       action="?/createArtist"
-      fields={['name', 'years', 'file']}
+      fields={['name', 'years', 'file', 'imageAlt']}
       submitLabel="Add"
       pendingLabel="Adding…"
       requireImage={false}

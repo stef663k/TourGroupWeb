@@ -8,8 +8,9 @@ import {
 	addEventImage,
 	listEventImages,
 	getEventImage,
-	removeEventImage
-} from '$lib/server/db';
+	removeEventImage,
+	updateEventImageAlt
+	} from '$lib/server/db';
 
 /**
  * Minimal in-memory D1-stub der understøtter de SQL-forespørgsler
@@ -36,6 +37,7 @@ function createFakeD1(): D1Database {
 		event_id: number;
 		r2_key: string;
 		caption: string | null;
+		alt: string | null;
 		content_type: string;
 		sort_order: number;
 		is_cover: number;
@@ -54,7 +56,7 @@ function createFakeD1(): D1Database {
 			}
 			if (
 				q.startsWith(
-					'SELECT id, event_id, r2_key, caption, content_type, sort_order, is_cover, created_at FROM event_images WHERE id'
+					'SELECT id, event_id, r2_key, caption, alt, content_type, sort_order, is_cover, created_at FROM event_images WHERE id'
 				)
 			) {
 				const [id] = args as [number];
@@ -92,9 +94,10 @@ function createFakeD1(): D1Database {
 				return row as T;
 			}
 			if (q.startsWith('INSERT INTO event_images')) {
-				const [event_id, r2_key, caption, content_type, sort_order, is_cover] = args as [
+				const [event_id, r2_key, caption, alt, content_type, sort_order, is_cover] = args as [
 					number,
 					string,
+					string | null,
 					string | null,
 					string,
 					number,
@@ -108,12 +111,20 @@ function createFakeD1(): D1Database {
 					event_id,
 					r2_key,
 					caption,
+					alt,
 					content_type,
 					sort_order,
 					is_cover,
 					created_at: Math.floor(Date.now() / 1000)
 				};
 				images.push(row);
+				return row as T;
+			}
+			if (q.startsWith('UPDATE event_images SET alt = ?1')) {
+				const [alt, id] = args as [string | null, number];
+				const row = images.find((i) => i.id === id);
+				if (!row) return null;
+				row.alt = alt;
 				return row as T;
 			}
 			if (q.startsWith('UPDATE events SET')) {
@@ -164,7 +175,7 @@ function createFakeD1(): D1Database {
 			}
 			if (
 				q.startsWith(
-					'SELECT id, event_id, r2_key, caption, content_type, sort_order, is_cover, created_at FROM event_images WHERE event_id'
+					'SELECT id, event_id, r2_key, caption, alt, content_type, sort_order, is_cover, created_at FROM event_images WHERE event_id'
 				)
 			) {
 				const [eventId] = args as [number];
@@ -448,6 +459,47 @@ describe('event-billeder', () => {
 		});
 		const fetched = await getEventImage(db, img.id);
 		expect(fetched?.r2_key).toBe('events/fest/y.jpg');
+	});
+
+	it('gemmer en alt-tekst når billedet tilføjes', async () => {
+		await addEventImage(db, {
+			eventId,
+			r2Key: 'events/fest/alt.jpg',
+			contentType: 'image/jpeg',
+			alt: 'Bandet på scenen'
+		});
+		const images = await listEventImages(db, eventId);
+		expect(images[0].alt).toBe('Bandet på scenen');
+	});
+
+	it('opdaterer alt-teksten retroaktivt på et eksisterende billede', async () => {
+		const img = await addEventImage(db, {
+			eventId,
+			r2Key: 'events/fest/retro.jpg',
+			contentType: 'image/jpeg'
+		});
+		expect(img.alt).toBeNull();
+
+		const updated = await updateEventImageAlt(db, img.id, 'Publikum foran scenen');
+		expect(updated?.alt).toBe('Publikum foran scenen');
+
+		const fetched = await getEventImage(db, img.id);
+		expect(fetched?.alt).toBe('Publikum foran scenen');
+	});
+
+	it('rydder alt-teksten når der sendes null', async () => {
+		const img = await addEventImage(db, {
+			eventId,
+			r2Key: 'events/fest/clear.jpg',
+			contentType: 'image/jpeg',
+			alt: 'Midlertidig'
+		});
+		const cleared = await updateEventImageAlt(db, img.id, null);
+		expect(cleared?.alt).toBeNull();
+	});
+
+	it('returnerer null når alt-teksten opdateres på et ukendt billede', async () => {
+		expect(await updateEventImageAlt(db, 999, 'tekst')).toBeNull();
 	});
 
 	it('fjerner et billede og returnerer rækken', async () => {

@@ -6,6 +6,7 @@
   interface EventImage {
     id: number;
     caption: string | null;
+    alt: string | null;
     url: string;
     isCover: boolean;
   }
@@ -338,7 +339,7 @@
           <ul class="images">
             {#each photos as image (image.id)}
               <li>
-                <img src={image.url} alt={image.caption ?? event.name} loading="lazy" />
+                <img src={image.url} alt={image.alt ?? image.caption ?? event.name} loading="lazy" />
                 {#if owner}
                   <form
                     method="POST"
@@ -350,6 +351,24 @@
                     <button type="submit" class="remove" aria-label="Delete image" title="Delete">
                       ×
                     </button>
+                  </form>
+                  <form
+                    method="POST"
+                    action="?/updateEventImageAlt"
+                    use:enhance
+                    class="image-alt-form"
+                  >
+                    <input type="hidden" name="id" value={image.id} />
+                    <label for="image-alt-{image.id}">Alt text</label>
+                    <input
+                      id="image-alt-{image.id}"
+                      name="alt"
+                      type="text"
+                      maxlength="250"
+                      value={image.alt ?? ''}
+                      placeholder="Describe the image"
+                    />
+                    <button type="submit" class="save-alt">Save</button>
                   </form>
                 {/if}
               </li>
@@ -381,6 +400,15 @@
             />
             <label for="modal-caption">Caption (optional)</label>
             <input id="modal-caption" name="caption" type="text" maxlength="200" />
+
+            <label for="modal-alt">Alt text (optional)</label>
+            <input
+              id="modal-alt"
+              name="alt"
+              type="text"
+              maxlength="250"
+              placeholder="Describe the image for screen readers"
+            />
 
             {#if compressing}
               <p class="note">Compressing image…</p>
@@ -680,6 +708,59 @@
   .remove:hover,
   .remove:focus-visible {
     background: #ff6b6b;
+  }
+
+  .image-alt-form {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.375rem;
+    margin-top: 0.375rem;
+    max-width: 18rem;
+  }
+
+  .image-alt-form label {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+    color: var(--fg-muted);
+  }
+
+  .image-alt-form input {
+    width: 100%;
+    padding: 0.375rem 0.5rem;
+    font-family: inherit;
+    font-size: 0.8125rem;
+    color: var(--fg);
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    border-radius: 0.375rem;
+  }
+
+  .image-alt-form input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .save-alt {
+    flex: 0 0 auto;
+    padding: 0.375rem 0.75rem;
+    font-family: inherit;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--bg);
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: opacity 0.2s var(--ease);
+  }
+
+  .save-alt:hover {
+    opacity: 0.85;
   }
 
   .empty {

@@ -9,6 +9,7 @@ import {
 	getEventImage,
 	updateEvent,
 	updateEventImage,
+	updateEventImageAlt,
 	deleteEvent,
 	removeEventImage,
 	listArtists,
@@ -64,6 +65,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 				images: images.map((img) => ({
 					id: img.id,
 					caption: img.caption,
+					alt: img.alt,
 					isCover: img.is_cover === 1,
 					url: publicImageUrl(img.r2_key, baseUrl)
 				}))
@@ -373,6 +375,9 @@ export const actions: Actions = {
 		const caption = String(data.get('caption') ?? '').trim();
 		if (caption.length > 200) return fail(400, { error: 'The caption is too long.' });
 
+		const alt = String(data.get('alt') ?? '').trim();
+		if (alt.length > 250) return fail(400, { error: 'The alt text is too long.' });
+
 		// Understøtter både én og flere filer i samme upload. Tomme
 		// fil-inputs (fx "no file selected") filtreres fra.
 		const files = data
@@ -414,12 +419,39 @@ export const actions: Actions = {
 					eventId: id,
 					r2Key: key,
 					caption: caption || null,
+					alt: alt || null,
 					contentType
 				});
 			}
 		} catch (err) {
 			console.error('Kunne ikke tilføje billede:', err);
 			return fail(500, { error: 'Could not add the image. Please try again later.' });
+		}
+
+		return { success: true };
+		},
+
+		updateEventImageAlt: async ({ request, platform, locals }) => {
+		if (!locals.owner) return fail(403, { error: 'Not authorized.' });
+
+		const db = platform?.env?.DB;
+		if (!db) return fail(500, { error: 'The database is not configured.' });
+
+		const data = await request.formData();
+		const id = Number(String(data.get('id') ?? '').trim());
+		if (!Number.isInteger(id)) return fail(400, { error: 'Invalid image.' });
+
+		const alt = String(data.get('alt') ?? '').trim();
+		if (alt.length > 250) return fail(400, { error: 'The alt text is too long.' });
+
+		const image = await getEventImage(db, id);
+		if (!image) return fail(404, { error: 'The image does not exist.' });
+
+		try {
+			await updateEventImageAlt(db, id, alt || null);
+		} catch (err) {
+			console.error('Kunne ikke opdatere alt-tekst:', err);
+			return fail(500, { error: 'Could not save the alt text. Please try again later.' });
 		}
 
 		return { success: true };
